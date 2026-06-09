@@ -1,0 +1,59 @@
+# Core architecture branches for the HAEN GT-1 programme.
+#
+# These are exploratory architecture definitions used as seed inputs. All values
+# are early-stage planning assumptions, NOT specifications, and require human
+# review. Energy figures are nominal usable values.
+branches:
+  - id: GT-1
+    name: GT-1 BEV baseline
+    status: baseline
+    powertrain: bev
+    description: >-
+      Battery-electric baseline architecture. Reference point for all
+      comparisons.
+    energy:
+      storage_type: li-ion battery pack
+      usable_energy_kwh: 95.0
+      gravimetric_density_wh_per_kg: 180.0   # pack-level, planning assumption
+      refill_time_min: 25.0                  # high-power DC charge, assumption
+    powertrain_detail:
+      peak_power_kw: 850.0
+      drivetrain: awd dual-motor
+    notes: "Baseline branch; lowest technical risk of the three."
+
+  - id: GT-1H
+    name: GT-1H 700bar H2 halo branch
+    status: halo
+    powertrain: h2_fuel_cell
+    description: >-
+      Hydrogen fuel-cell halo branch using 700 bar compressed gaseous hydrogen
+      storage. Explores range and refuelling advantages at higher integration
+      risk.
+    energy:
+      storage_type: 700 bar compressed H2 (type IV tanks)
+      usable_energy_kwh: 165.0
+      gravimetric_density_wh_per_kg: 95.0    # system-level incl. tanks, assumption
+      refill_time_min: 5.0                   # gaseous H2 refuel, assumption
+    powertrain_detail:
+      peak_power_kw: 600.0
+      buffer_battery_kwh: 12.0
+      drivetrain: awd dual-motor + fuel cell
+    notes: "Halo branch; packaging of 700 bar tanks is the key open risk."
+
+  - id: GT-1H-LH2
+    name: GT-1H LH2 watch branch
+    status: watch
+    powertrain: h2_fuel_cell
+    description: >-
+      Liquid-hydrogen watch branch. Tracked for future potential (higher energy
+      density) but high cryogenic and boil-off risk. Not actively developed.
+    energy:
+      storage_type: cryogenic liquid H2 (-253 C)
+      usable_energy_kwh: 210.0
+      gravimetric_density_wh_per_kg: 140.0   # system-level, optimistic assumption
+      refill_time_min: 8.0                   # cryo refuel, assumption
+    powertrain_detail:
+      peak_power_kw: 600.0
+      buffer_battery_kwh: 12.0
+      drivetrain: awd dual-motor + fuel cell
+    notes: "Watch branch only; cryogenic boil-off and safety unresolved."
