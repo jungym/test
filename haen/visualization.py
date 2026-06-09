@@ -8,9 +8,16 @@ is provided for static report images.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pandas as pd
 
 from .packaging import Component
+
+INTERNAL_PACKAGING_CAPTION = (
+    "Internal-only low-fidelity packaging diagram (axis-aligned bounding boxes). "
+    "Not CAD, not geometric or packaging validation."
+)
 
 
 def mass_energy_bar(df: pd.DataFrame, *, metric: str = "curb_mass_kg"):
@@ -63,31 +70,133 @@ def tradeoff_radar(table: pd.DataFrame, criteria_keys: list[str]):
     return fig
 
 
-def packaging_topview(components: list[Component]):
-    """Plotly 2-D top view (x-y plane) of component bounding boxes."""
+# --------------------------------------------------------------------------- #
+# Packaging diagrams (Review Gate 3, Item 4)
+# --------------------------------------------------------------------------- #
+# The diagram *model* below is pure Python (no plotting dependency) so it can be
+# computed and tested deterministically. Plotly renderers consume it.
+@dataclass(frozen=True)
+class Rect:
+    """A 2-D rectangle in a chosen packaging view (mm)."""
+
+    name: str
+    x0: float
+    y0: float
+    x1: float
+    y1: float
+    kind: str = "component"  # component | envelope | conflict
+
+
+@dataclass(frozen=True)
+class PackagingDiagram:
+    """A deterministic, lib-free packaging diagram model for one view.
+
+    ``view`` is "top" (x–y) or "side" (x–z). ``rects`` holds component (and
+    optional envelope) rectangles; ``conflicts`` holds the intersection
+    rectangles of overlapping components. Internal-only, low-fidelity.
+    """
+
+    view: str
+    rects: tuple[Rect, ...]
+    conflicts: tuple[Rect, ...]
+    internal_only: bool = True
+    caption: str = INTERNAL_PACKAGING_CAPTION
+
+
+def _axis_bounds(box, view: str) -> tuple[float, float, float, float]:
+    if view == "top":
+        return box.min_x, box.min_y, box.max_x, box.max_y
+    if view == "side":
+        return box.min_x, box.min_z, box.max_x, box.max_z
+    raise ValueError("view must be 'top' or 'side'")
+
+
+def packaging_diagram(
+    components: list[Component],
+    vehicle=None,
+    *,
+    view: str = "top",
+) -> PackagingDiagram:
+    """Build a deterministic packaging diagram model for ``view``.
+
+    Components are drawn as rectangles; if ``vehicle`` is given, its external
+    envelope is added. Overlapping component pairs contribute conflict rectangles
+    (their intersection). Handles an empty component list gracefully.
+    """
+    if view not in ("top", "side"):
+        raise ValueError("view must be 'top' or 'side'")
+
+    rects = [
+        Rect(c.name, *_axis_bounds(c.box, view), kind="component") for c in components
+    ]
+
+    if vehicle is not None:
+        half_len = vehicle.dimensions.length_mm / 2
+        if view == "top":
+            half_wid = vehicle.dimensions.width_mm / 2
+            rects.append(Rect("envelope", -half_len, -half_wid, half_len, half_wid, kind="envelope"))
+        else:
+            height = vehicle.dimensions.height_mm
+            rects.append(Rect("envelope", -half_len, 0.0, half_len, height, kind="envelope"))
+
+    conflicts: list[Rect] = []
+    n = len(components)
+    for i in range(n):
+        for j in range(i + 1, n):
+            a, b = components[i].box, components[j].box
+            ix0, ix1 = max(a.min_x, b.min_x), min(a.max_x, b.max_x)
+            iy0, iy1 = max(a.min_y, b.min_y), min(a.max_y, b.max_y)
+            iz0, iz1 = max(a.min_z, b.min_z), min(a.max_z, b.max_z)
+            if ix1 > ix0 and iy1 > iy0 and iz1 > iz0:  # true 3-D overlap
+                name = f"{components[i].name} x {components[j].name}"
+                if view == "top":
+                    conflicts.append(Rect(name, ix0, iy0, ix1, iy1, kind="conflict"))
+                else:
+                    conflicts.append(Rect(name, ix0, iz0, ix1, iz1, kind="conflict"))
+
+    return PackagingDiagram(view=view, rects=tuple(rects), conflicts=tuple(conflicts))
+
+
+def _render_diagram(diagram: PackagingDiagram):
+    """Render a :class:`PackagingDiagram` as a Plotly figure (lazy import)."""
     import plotly.graph_objects as go
 
+    vlabel = "y (mm)" if diagram.view == "top" else "z (mm)"
     fig = go.Figure()
-    for c in components:
-        b = c.box
+    for r in diagram.rects:
+        line_w = 2 if r.kind == "envelope" else 1
+        dash = "dot" if r.kind == "envelope" else "solid"
         fig.add_shape(
-            type="rect",
-            x0=b.min_x, x1=b.max_x, y0=b.min_y, y1=b.max_y,
-            line={"width": 1},
-            opacity=0.4,
+            type="rect", x0=r.x0, y0=r.y0, x1=r.x1, y1=r.y1,
+            line={"width": line_w, "dash": dash}, opacity=0.35,
         )
         fig.add_trace(
             go.Scatter(
-                x=[b.cx], y=[b.cy], mode="markers+text",
-                text=[c.name], textposition="top center", name=c.name,
+                x=[(r.x0 + r.x1) / 2], y=[(r.y0 + r.y1) / 2],
+                mode="markers+text", text=[r.name], textposition="top center", name=r.name,
             )
         )
+    for c in diagram.conflicts:
+        fig.add_shape(
+            type="rect", x0=c.x0, y0=c.y0, x1=c.x1, y1=c.y1,
+            line={"width": 2, "color": "red"}, fillcolor="red", opacity=0.3,
+        )
     fig.update_layout(
-        title="Packaging — top view (x longitudinal, y lateral)",
-        xaxis_title="x (mm)", yaxis_title="y (mm)",
+        title=f"Packaging — {diagram.view} view (INTERNAL — low-fidelity AABB)",
+        xaxis_title="x (mm)", yaxis_title=vlabel,
         yaxis={"scaleanchor": "x", "scaleratio": 1},
     )
     return fig
+
+
+def packaging_topview(components: list[Component], vehicle=None):
+    """Plotly 2-D top view (x–y) of component bounding boxes + conflicts."""
+    return _render_diagram(packaging_diagram(components, vehicle, view="top"))
+
+
+def packaging_sideview(components: list[Component], vehicle=None):
+    """Plotly 2-D side view (x–z) of component bounding boxes + conflicts."""
+    return _render_diagram(packaging_diagram(components, vehicle, view="side"))
 
 
 def mass_breakdown_pie_mpl(breakdown: pd.DataFrame):
