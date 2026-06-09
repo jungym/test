@@ -138,4 +138,7 @@ def test_dossier_declares_not_performed_statuses():
 def test_dossier_flags_top_speed_artifact():
     text = build_dossier(programme="P", branch="GT-1", vehicles=build_sample_fleet())
     assert "[!]" in text
-    assert "Braking, load transfer and CG-sensitivity are NOT modelled" in text
+    # Gate 2 Item 5: braking/load-transfer/CG are now provided as separate
+    # low-fidelity screening (section 4a), explicitly not dynamics validation.
+    assert "not vehicle-dynamics validation" in text
+    assert "Dynamics screening" in text

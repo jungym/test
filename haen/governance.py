@@ -167,6 +167,32 @@ class DataLabel(str, Enum):
 
 
 @dataclass
+class ReportMetadata:
+    """Governance metadata attached to every generated report.
+
+    Reports are **internal by default** and **require human review**. Nothing
+    here authorizes external release or implies any engineering validation. The
+    defaults are deliberately conservative: ``external_release_allowed`` is
+    ``False`` and ``human_review_required`` is ``True``.
+    """
+
+    programme: str = ""
+    human_review_required: bool = True
+    external_release_allowed: bool = False
+    internal_only: bool = True
+    classification: str = "INTERNAL — human review required"
+
+    def banner(self) -> str:
+        """Render the metadata as a Markdown banner for report headers."""
+        return (
+            f"> **Classification:** {self.classification}  \n"
+            f"> **human_review_required:** {str(self.human_review_required).lower()}  \n"
+            f"> **external_release_allowed:** {str(self.external_release_allowed).lower()}  \n"
+            f"> **internal_only:** {str(self.internal_only).lower()}"
+        )
+
+
+@dataclass
 class Assumption:
     """A single engineering assumption used to produce an output."""
 

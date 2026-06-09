@@ -17,10 +17,10 @@ from . import DISCLAIMER
 from . import design_space_explorer as dse
 from . import low_fidelity_simulation as sim
 from . import mass_energy
-from .governance import AssumptionLedger, assert_clean, check_text
+from .governance import AssumptionLedger, ReportMetadata, assert_clean, check_text
 from .rfi_builder import RFI
 from .supplier_evidence import SupplierEvidenceTable
-from .vehicle_definition import VehicleDefinition
+from .vehicle_definition import VehicleDefinition, load_branches
 
 _TEMPLATE = Path(__file__).resolve().parent.parent / "templates" / "entry_validation_dossier.md.tmpl"
 
@@ -71,7 +71,8 @@ def _sim_md(results: list[sim.SimResult]) -> str:
         "\n\n_Low-fidelity point-mass screening estimates; not real-world predictions "
         "and not for certification use. Acceleration, range and top speed ignore "
         "gearing, traction, thermal, transient and drive-cycle effects. Braking, "
-        "load transfer and CG-sensitivity are NOT modelled in this MVP._"
+        "load-transfer and CG-sensitivity are provided separately as low-fidelity "
+        "screening (section 4a), not vehicle-dynamics validation._"
     )
     artifacts = [w for r in results for w in r.warnings]
     if artifacts:
@@ -79,6 +80,49 @@ def _sim_md(results: list[sim.SimResult]) -> str:
             f"- {w}" for w in artifacts
         )
     return _df_to_md(df) + note
+
+
+def _dynamics_screening_md(vehicles: list[VehicleDefinition]) -> str:
+    """Braking + load-transfer screening per vehicle (low-fidelity only)."""
+    rows = []
+    for v in vehicles:
+        b = sim.screen_braking(vehicle_id=v.id)
+        lt = sim.screen_load_transfer_for(v)
+        rows.append(
+            {
+                "id": v.id,
+                "brake_decel_mps2": b.deceleration_mps2,
+                "stopping_dist_m@100kph": b.stopping_distance_m,
+                "long_load_transfer_N": lt.longitudinal_load_transfer_n,
+                "lat_load_transfer_N": lt.lateral_load_transfer_n,
+            }
+        )
+    df = pd.DataFrame(rows).set_index("id")
+    note = (
+        "\n\n_All values are **low_fidelity_screening** (label), source_type "
+        "`screening_assumption`, confidence `low`. Braking uses mu=1.0 @ 100 km/h; "
+        "load transfer uses ~1 g assumptions and the chassis CG-height/track "
+        "assumptions. Idealized rigid-body models — not brake-system design, tyre "
+        "models, suspension kinematics, aero/downforce, or vehicle-dynamics "
+        "validation. Figures are neither measured nor a guarantee of behaviour._"
+    )
+    return _df_to_md(df) + note
+
+
+def _gate_status_md(vehicles: list[VehicleDefinition]) -> str:
+    """Per-branch gate-status (governance metadata) for the vehicles' branches."""
+    branches = load_branches()
+    seen: dict[str, str] = {}
+    for v in vehicles:
+        b = branches.get(v.branch_id)
+        if b is not None and b.id not in seen:
+            seen[b.id] = b.gate_status.value
+    if not seen:
+        return "_No branch gate status available._"
+    df = pd.DataFrame(
+        [{"branch": bid, "gate_status": status} for bid, status in seen.items()]
+    ).set_index("branch")
+    return _df_to_md(df)
 
 
 def build_dossier(
@@ -90,14 +134,17 @@ def build_dossier(
     evidence: SupplierEvidenceTable | None = None,
     ledger: AssumptionLedger | None = None,
     rfi: RFI | None = None,
+    metadata: ReportMetadata | None = None,
     template_path: Path | None = None,
 ) -> str:
     """Build the entry validation dossier as Markdown.
 
-    Raises :class:`~haen.governance.ForbiddenClaimError` if the assembled text
-    contains any forbidden claim (it should not, by construction).
+    The dossier is INTERNAL and human-review-required by default (see
+    ``metadata``). Raises :class:`~haen.governance.ForbiddenClaimError` if the
+    assembled text contains any forbidden claim (it should not, by construction).
     """
     primary = primary_vehicle or vehicles[0]
+    meta = metadata or ReportMetadata(programme=programme)
     tmpl = (template_path or _TEMPLATE).read_text(encoding="utf-8")
 
     me_df = mass_energy.compare(vehicles)
@@ -128,11 +175,14 @@ def build_dossier(
         programme=programme,
         generated=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
         branch=branch,
+        report_metadata=meta.banner(),
         disclaimer=DISCLAIMER,
         vehicle_definition=_vehicle_md(primary),
         mass_energy=_df_to_md(me_df),
         simulation=_sim_md(sim_results),
+        dynamics_screening=_dynamics_screening_md(vehicles),
         tradeoff=_df_to_md(rank_df),
+        gate_status=_gate_status_md(vehicles),
         packaging=packaging_md,
         supplier_evidence=supplier_md,
         assumptions=assumptions_md,
