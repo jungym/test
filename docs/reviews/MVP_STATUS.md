@@ -40,6 +40,10 @@ Every screening output carries `source_type`, `confidence`, and a `DataLabel`
 
 - Gate 1: CLOSED (`docs/reviews/GATE_1_CLOSURE.md`).
 - Gate 2 (Items 1–6): implemented (`docs/reviews/REVIEW_GATE_2_SCOPE.md`).
+- Gate 3 (Items 1–7): implemented (`docs/reviews/REVIEW_GATE_3_SCOPE.md`) —
+  per-line-item mass/energy metadata labels, energy-scenario comparison,
+  packaging visualization (top/side/conflict), packaging-to-report integration,
+  dashboard expansion.
 
 ## Validation
 

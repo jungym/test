@@ -1,8 +1,26 @@
 # Review Gate 3 — Proposed Scope (PROPOSAL ONLY — not implemented)
 
-**Status: DRAFT PROPOSAL.** Nothing in this document has been implemented. It
-scopes the next safe expansion for approval. Implementation begins only on
-explicit instruction.
+**Status: IMPLEMENTED.** This document originally scoped Gate 3 as a proposal;
+the items below have since been implemented on `haen-standalone-extraction`.
+
+> **Implementation status:**
+> - Item 1 (verify baseline) — done.
+> - Item 2 (per-line-item mass/energy metadata) — done: `LabeledItem`/`MassItem`/
+>   `EnergyItem`, `mass_energy` metadata columns + `metadata_completeness`
+>   (`tests/test_metadata_labels.py`).
+> - Item 3 (energy-scenario comparison) — done: `energy_scenario_comparison()` /
+>   `energy_scenario_line_items()` (`tests/test_energy_scenario.py`).
+> - Item 4 (packaging visualization) — done: pure `packaging_diagram()` model +
+>   Plotly top/side renderers (`tests/test_packaging_viz.py`).
+> - Item 5 (packaging-to-report integration) — done: dossier packaging section
+>   with conflict summary + diagram references (`tests/test_packaging_report.py`).
+> - Item 6 (dashboard expansion) — done: energy-scenario, metadata completeness,
+>   side-view packaging.
+> - Item 7 (consolidation) — this update.
+>
+> All outputs remain internal, human-review-required, governance-gated, and
+> labelled low-fidelity / metadata-only. No CAD/CFD/crash/thermal/FEA/
+> certification/production/supplier-confirmation/road-legality work.
 
 HAEN Hypercar Design Support AI is a human-reviewed AI-assisted concept
 engineering support system, not an autonomous vehicle design or certification
