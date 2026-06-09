@@ -134,6 +134,9 @@ def _page_simulation(fleet) -> None:
         ]
     ).set_index("id")
     st.dataframe(df, use_container_width=True)
+    for r in results:
+        for w in r.warnings:
+            st.warning(f"{r.vehicle_id}: {w}")
 
 
 def _page_tradeoff(fleet) -> None:

@@ -32,13 +32,18 @@ def _cmd_simulate(args) -> int:
     from . import low_fidelity_simulation as sim
     from .sample_data import build_sample_fleet
 
-    for r in sim.simulate_all(build_sample_fleet()):
+    results = sim.simulate_all(build_sample_fleet())
+    for r in results:
+        flag = "  [!] top-speed = MODEL ARTIFACT" if r.top_speed_is_artifact else ""
         print(
             f"{r.vehicle_id:16s} top={r.top_speed_kph:6.1f} kph  "
             f"0-100={r.zero_to_100_s:5.2f} s  range={r.estimated_range_km:6.1f} km  "
-            f"({r.avg_consumption_kwh_per_100km} kWh/100km)"
+            f"({r.avg_consumption_kwh_per_100km} kWh/100km){flag}"
         )
-    print("\n[low-fidelity estimates; not real-world predictions]")
+    for r in results:
+        for w in r.warnings:
+            print(f"\n[!] {r.vehicle_id}: {w}")
+    print("\n[low-fidelity screening estimates; not real-world predictions]")
     return 0
 
 

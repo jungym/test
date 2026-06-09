@@ -21,6 +21,12 @@ RHO_AIR = 1.225      # kg/m^3, sea-level standard
 G = 9.81             # m/s^2
 
 
+# Above this speed (km/h) the point-mass top-speed result is treated as a pure
+# model artifact: real vehicles are limited by gearing, tyres, stability and
+# safety long before this. Used only to attach a louder screening warning.
+TOP_SPEED_PLAUSIBILITY_KPH = 400.0
+
+
 @dataclass(frozen=True)
 class SimResult:
     vehicle_id: str
@@ -30,6 +36,12 @@ class SimResult:
     avg_consumption_kwh_per_100km: float
     drivetrain_efficiency: float
     notes: str = "Low-fidelity point-mass estimate; not a real-world prediction."
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def top_speed_is_artifact(self) -> bool:
+        """True when the top-speed estimate exceeds the plausibility bound."""
+        return self.top_speed_kph > TOP_SPEED_PLAUSIBILITY_KPH
 
 
 def _resistive_power_w(v_ms: float, vehicle: VehicleDefinition) -> float:
@@ -102,6 +114,14 @@ def simulate(vehicle: VehicleDefinition, *, drivetrain_eff: float | None = None,
     top = estimate_top_speed_kph(vehicle, drivetrain_eff=drivetrain_eff)
     zero = estimate_zero_to_100(vehicle, drivetrain_eff=drivetrain_eff)
     rng, cons = estimate_range_km(vehicle, cruise_kph=cruise_kph, drivetrain_eff=drivetrain_eff)
+
+    warnings: list[str] = []
+    if round(top, 1) > TOP_SPEED_PLAUSIBILITY_KPH:
+        warnings.append(
+            f"Top-speed estimate {top:.0f} km/h exceeds the {TOP_SPEED_PLAUSIBILITY_KPH:.0f} "
+            "km/h plausibility bound: this is a point-mass MODEL ARTIFACT (no gearing, "
+            "tyre, stability or safety limits modelled), NOT a real-world prediction."
+        )
     return SimResult(
         vehicle_id=vehicle.id,
         top_speed_kph=round(top, 1),
@@ -109,6 +129,7 @@ def simulate(vehicle: VehicleDefinition, *, drivetrain_eff: float | None = None,
         estimated_range_km=rng,
         avg_consumption_kwh_per_100km=cons,
         drivetrain_efficiency=drivetrain_eff,
+        warnings=tuple(warnings),
     )
 
 

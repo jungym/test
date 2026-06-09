@@ -58,7 +58,8 @@ def _sim_md(results: list[sim.SimResult]) -> str:
         [
             {
                 "id": r.vehicle_id,
-                "top_speed_kph": r.top_speed_kph,
+                "top_speed_kph": f"{r.top_speed_kph} [!]" if r.top_speed_is_artifact
+                else r.top_speed_kph,
                 "0-100_s": r.zero_to_100_s,
                 "range_km": r.estimated_range_km,
                 "kwh/100km": r.avg_consumption_kwh_per_100km,
@@ -67,9 +68,16 @@ def _sim_md(results: list[sim.SimResult]) -> str:
         ]
     ).set_index("id")
     note = (
-        "\n\n_Low-fidelity point-mass estimates; not real-world predictions and "
-        "not for certification use._"
+        "\n\n_Low-fidelity point-mass screening estimates; not real-world predictions "
+        "and not for certification use. Acceleration, range and top speed ignore "
+        "gearing, traction, thermal, transient and drive-cycle effects. Braking, "
+        "load transfer and CG-sensitivity are NOT modelled in this MVP._"
     )
+    artifacts = [w for r in results for w in r.warnings]
+    if artifacts:
+        note += "\n\n**Screening artifacts flagged ([!]):**\n" + "\n".join(
+            f"- {w}" for w in artifacts
+        )
     return _df_to_md(df) + note
 
 
