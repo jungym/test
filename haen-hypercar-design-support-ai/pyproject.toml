@@ -1,0 +1,42 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "haen-hypercar-design-support-ai"
+version = "0.1.0"
+description = "HAEN Hypercar Design Support AI — a human-reviewed, AI-assisted design support system (MVP)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+authors = [{ name = "HAEN" }]
+dependencies = [
+    "pydantic>=2.6",
+    "pandas>=2.2",
+    "numpy>=1.26",
+    "plotly>=5.20",
+    "matplotlib>=3.8",
+    "streamlit>=1.33",
+    "pyyaml>=6.0",
+    "duckdb>=0.10",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-cov>=5.0"]
+
+[project.scripts]
+haen = "haen.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["haen*"]
+
+[tool.setuptools.package-data]
+haen = ["data/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
