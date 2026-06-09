@@ -1,0 +1,72 @@
+# Forbidden claims for the HAEN Hypercar Design Support AI.
+#
+# This system is a *design support* tool only. It must never assert any of the
+# claims below. The forbidden claim checker (haen.governance) scans generated
+# text for these patterns. Patterns are case-insensitive regular expressions.
+forbidden_claims:
+  - id: FC-001
+    label: road legal
+    explanation: >-
+      Road legality depends on jurisdiction-specific type approval that this
+      system does not assess. State "road-legality not assessed" instead.
+    patterns:
+      - "road[\\s-]?legal\\b"
+      - "street[\\s-]?legal\\b"
+      - "legal for (?:the )?road"
+
+  - id: FC-002
+    label: homologation ready
+    explanation: >-
+      Homologation readiness requires formal certification processes outside the
+      scope of this tool. State "homologation status: not assessed".
+    patterns:
+      - "homologation[\\s-]?ready\\b"
+      - "ready for homologation"
+      - "fully homologated"
+      - "homologation[\\s-]?complete\\b"
+
+  - id: FC-003
+    label: crash safe
+    explanation: >-
+      Crash safety requires physical and validated high-fidelity crash testing.
+      Low-fidelity simulation cannot substantiate it. Use "crashworthiness not
+      evaluated".
+    patterns:
+      - "crash[\\s-]?safe"
+      - "crash[\\s-]?proof"
+      - "crashworthiness (?:confirmed|proven|guaranteed)"
+      - "safe in (?:a )?crash"
+
+  - id: FC-004
+    label: production feasible
+    explanation: >-
+      Production feasibility requires manufacturing, tooling and supply-chain
+      validation not performed here. Use "manufacturability not assessed".
+    patterns:
+      - "production[\\s-]?feasible\\b"
+      - "production[\\s-]?ready\\b"
+      - "ready for production"
+      - "manufacturing[\\s-]?feasible\\b"
+      - "feasible for (?:mass )?production"
+
+  - id: FC-005
+    label: supplier confirmed
+    explanation: >-
+      Supplier figures are evidence to be tracked, not confirmations. Use
+      "supplier-quoted (unverified)" until evidence is verified by a human.
+    patterns:
+      - "supplier[\\s-]?confirmed"
+      - "confirmed by (?:the )?supplier"
+      - "supplier[\\s-]?guaranteed"
+      - "vendor[\\s-]?confirmed"
+
+  - id: FC-006
+    label: design complete
+    explanation: >-
+      This MVP supports early-stage exploration only. Use "design exploration
+      in progress" rather than declaring completion or finality.
+    patterns:
+      - "design[\\s-]?(?:is\\s+)?complete\\b"
+      - "design (?:is )?finali[sz]ed"
+      - "final design"
+      - "fully (?:designed|engineered)"
