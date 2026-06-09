@@ -47,6 +47,24 @@ def _cmd_simulate(args) -> int:
     return 0
 
 
+def _cmd_screen(args) -> int:
+    from . import low_fidelity_simulation as sim
+    from .sample_data import build_sample_fleet
+
+    print("Dynamics screening (low_fidelity_screening — not vehicle-dynamics validation):")
+    for v in build_sample_fleet():
+        b = sim.screen_braking(vehicle_id=v.id)
+        lt = sim.screen_load_transfer_for(v)
+        print(
+            f"  {v.id:16s} brake_decel={b.deceleration_mps2:5.2f} m/s^2  "
+            f"stop@100kph={b.stopping_distance_m:6.1f} m  "
+            f"long_LT={lt.longitudinal_load_transfer_n:8.1f} N  "
+            f"lat_LT={lt.lateral_load_transfer_n:8.1f} N"
+        )
+    print("\n[braking mu=1.0@100kph; load transfer ~1g; idealized rigid-body screening only]")
+    return 0
+
+
 def _cmd_check(args) -> int:
     from .governance import check_text
 
@@ -63,7 +81,7 @@ def _cmd_check(args) -> int:
 
 def _cmd_rfi(args) -> int:
     from .rfi_builder import build_rfi
-    from .sample_data import build_sample_evidence, build_sample_ledger
+    from .sample_data import build_sample_evidence, build_sample_ledger, build_sample_partners
 
     rfi = build_rfi(
         title="GT-1 programme — sample RFI",
@@ -71,6 +89,7 @@ def _cmd_rfi(args) -> int:
         ledger=build_sample_ledger(),
         evidence=build_sample_evidence(),
         expected_components=["Battery pack", "700 bar H2 tanks", "Fuel-cell stack", "Brakes"],
+        partners=build_sample_partners(),
     )
     print(rfi.to_markdown())
     return 0
@@ -108,6 +127,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("compare", help="branch comparison table").set_defaults(func=_cmd_compare)
     sub.add_parser("simulate", help="low-fidelity simulation").set_defaults(func=_cmd_simulate)
+    sub.add_parser("screen", help="braking + load-transfer dynamics screening").set_defaults(
+        func=_cmd_screen
+    )
 
     pc = sub.add_parser("check", help="forbidden-claim check on a file")
     pc.add_argument("file")

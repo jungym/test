@@ -32,6 +32,7 @@ from haen.sample_data import (
     build_sample_evidence,
     build_sample_fleet,
     build_sample_ledger,
+    build_sample_partners,
 )
 
 
@@ -56,6 +57,7 @@ def main() -> None:
             "Overview",
             "Mass & energy",
             "Low-fidelity simulation",
+            "Dynamics screening",
             "Branch trade-off",
             "Packaging",
             "Supplier evidence",
@@ -70,6 +72,8 @@ def main() -> None:
         _page_mass_energy(fleet)
     elif page == "Low-fidelity simulation":
         _page_simulation(fleet)
+    elif page == "Dynamics screening":
+        _page_dynamics(fleet)
     elif page == "Branch trade-off":
         _page_tradeoff(fleet)
     elif page == "Packaging":
@@ -139,6 +143,47 @@ def _page_simulation(fleet) -> None:
             st.warning(f"{r.vehicle_id}: {w}")
 
 
+def _page_dynamics(fleet) -> None:
+    st.header("Dynamics screening (low-fidelity)")
+    st.info(
+        "Braking + load-transfer screening only. Idealized rigid-body models — "
+        "NOT brake-system design, tyre models, suspension kinematics, aero, or "
+        "vehicle-dynamics validation. All values are low_fidelity_screening."
+    )
+    rows = []
+    for v in fleet:
+        b = sim.screen_braking(vehicle_id=v.id)
+        lt = sim.screen_load_transfer_for(v)
+        rows.append(
+            {
+                "id": v.id,
+                "brake_decel_mps2": b.deceleration_mps2,
+                "stopping_dist_m@100kph": b.stopping_distance_m,
+                "long_load_transfer_N": lt.longitudinal_load_transfer_n,
+                "lat_load_transfer_N": lt.lateral_load_transfer_n,
+            }
+        )
+    st.dataframe(pd.DataFrame(rows).set_index("id"), use_container_width=True)
+
+    st.subheader("CG-sensitivity sweep")
+    vid = st.selectbox("Vehicle", [v.id for v in fleet])
+    vehicle = {v.id: v for v in fleet}[vid]
+    sweep = sim.screen_cg_sensitivity_for(vehicle)
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "cg_height_mm": r.cg_height_mm,
+                    "long_load_transfer_N": r.longitudinal_load_transfer_n,
+                    "lat_load_transfer_N": r.lateral_load_transfer_n,
+                }
+                for r in sweep.rows
+            ]
+        ).set_index("cg_height_mm"),
+        use_container_width=True,
+    )
+
+
 def _page_tradeoff(fleet) -> None:
     st.header("Architecture branch trade-off (advisory)")
     result = dse.score_branches(fleet)
@@ -198,6 +243,27 @@ def _page_evidence() -> None:
     st.dataframe(evidence.to_dataframe(), use_container_width=True)
     st.write("Coverage by verification state:")
     st.json(evidence.coverage_summary())
+
+    st.subheader("Partner engagement registry")
+    st.caption(
+        "Engagement status is governance metadata only — not a confirmed or "
+        "selected supplier."
+    )
+    st.dataframe(
+        pd.DataFrame(
+            [
+                {
+                    "name": p.name,
+                    "engagement_status": p.engagement_status.value,
+                    "domain": p.domain,
+                    "rfi_level": p.rfi_level,
+                    "branch": p.branch,
+                }
+                for p in build_sample_partners()
+            ]
+        ).set_index("name"),
+        use_container_width=True,
+    )
 
 
 def _page_rfi() -> None:
