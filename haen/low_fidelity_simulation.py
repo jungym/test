@@ -220,3 +220,110 @@ def screen_braking(
         deceleration_mps2=round(deceleration, 3),
         stopping_distance_m=round(stopping_distance, 2),
     )
+
+
+# --------------------------------------------------------------------------- #
+# Load-transfer screening (Review Gate 2, Item 3)
+# --------------------------------------------------------------------------- #
+# Default screening accelerations (assumptions, overridable).
+DEFAULT_LONGITUDINAL_DECEL_MPS2 = DEFAULT_TYRE_FRICTION_COEFFICIENT * G  # ~9.81
+DEFAULT_LATERAL_ACCEL_MPS2 = 1.0 * G  # assumption: ~1.0 g cornering
+
+
+@dataclass(frozen=True)
+class LoadTransferScreening:
+    """Low-fidelity static load-transfer *screening* estimate.
+
+    Rigid-body weight-transfer magnitudes from mass, acceleration and CG height::
+
+        longitudinal_load_transfer_n = mass * a_long * cg_height / wheelbase
+        lateral_load_transfer_n      = mass * a_lat  * cg_height / track_width
+
+    Screening only — **not** vehicle-dynamics validation, suspension kinematics,
+    a tyre model, or downforce/aero. The figures are estimates, neither measured
+    nor a guarantee of behaviour. Provenance is declared via
+    ``source_type``/``confidence``/``label``.
+    """
+
+    vehicle_id: str
+    mass_kg: float
+    cg_height_mm: float
+    wheelbase_mm: float
+    track_width_mm: float
+    longitudinal_decel_mps2: float
+    lateral_accel_mps2: float
+    longitudinal_load_transfer_n: float
+    lateral_load_transfer_n: float
+    source_type: str = "screening_assumption"
+    confidence: Confidence = Confidence.LOW
+    label: DataLabel = DataLabel.LOW_FIDELITY_SCREENING
+    notes: str = (
+        "Low-fidelity rigid-body load-transfer screening (dW = m*a*h/base). "
+        "Ignores suspension kinematics, tyre behaviour, downforce, aero and "
+        "transient response. Not vehicle-dynamics validation; figures are "
+        "screening estimates, neither measured nor a guarantee."
+    )
+
+    @property
+    def assumptions(self) -> dict[str, float]:
+        return {
+            "mass_kg": self.mass_kg,
+            "cg_height_mm": self.cg_height_mm,
+            "wheelbase_mm": self.wheelbase_mm,
+            "track_width_mm": self.track_width_mm,
+            "longitudinal_decel_mps2": self.longitudinal_decel_mps2,
+            "lateral_accel_mps2": self.lateral_accel_mps2,
+        }
+
+
+def screen_load_transfer(
+    *,
+    mass_kg: float,
+    cg_height_mm: float,
+    wheelbase_mm: float,
+    track_width_mm: float,
+    longitudinal_decel_mps2: float = DEFAULT_LONGITUDINAL_DECEL_MPS2,
+    lateral_accel_mps2: float = DEFAULT_LATERAL_ACCEL_MPS2,
+    vehicle_id: str = "",
+) -> LoadTransferScreening:
+    """Compute low-fidelity longitudinal and lateral load transfer.
+
+    Raises ``ValueError`` for non-positive mass/geometry or negative
+    accelerations. Screening only — see :class:`LoadTransferScreening`.
+    """
+    if mass_kg <= 0:
+        raise ValueError("mass_kg must be positive")
+    if cg_height_mm <= 0:
+        raise ValueError("cg_height_mm must be positive")
+    if wheelbase_mm <= 0:
+        raise ValueError("wheelbase_mm must be positive")
+    if track_width_mm <= 0:
+        raise ValueError("track_width_mm must be positive")
+    if longitudinal_decel_mps2 < 0 or lateral_accel_mps2 < 0:
+        raise ValueError("accelerations must be non-negative")
+
+    long_transfer = mass_kg * longitudinal_decel_mps2 * (cg_height_mm / wheelbase_mm)
+    lat_transfer = mass_kg * lateral_accel_mps2 * (cg_height_mm / track_width_mm)
+    return LoadTransferScreening(
+        vehicle_id=vehicle_id,
+        mass_kg=round(mass_kg, 1),
+        cg_height_mm=round(cg_height_mm, 1),
+        wheelbase_mm=round(wheelbase_mm, 1),
+        track_width_mm=round(track_width_mm, 1),
+        longitudinal_decel_mps2=round(longitudinal_decel_mps2, 3),
+        lateral_accel_mps2=round(lateral_accel_mps2, 3),
+        longitudinal_load_transfer_n=round(long_transfer, 1),
+        lateral_load_transfer_n=round(lat_transfer, 1),
+    )
+
+
+def screen_load_transfer_for(vehicle: VehicleDefinition, **kwargs) -> LoadTransferScreening:
+    """Load-transfer screening seeded from a vehicle's mass and chassis geometry."""
+    return screen_load_transfer(
+        mass_kg=vehicle.curb_mass_kg,
+        cg_height_mm=vehicle.chassis.cg_height_mm,
+        wheelbase_mm=vehicle.dimensions.wheelbase_mm,
+        track_width_mm=vehicle.chassis.track_width_mm,
+        vehicle_id=vehicle.id,
+        **kwargs,
+    )

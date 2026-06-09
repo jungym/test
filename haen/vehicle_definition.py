@@ -104,6 +104,21 @@ class Powerplant(BaseModel):
     buffer_battery_kwh: NonNegativeFloat = 0.0
 
 
+class ChassisGeometry(BaseModel):
+    """Chassis geometry assumptions for low-fidelity dynamics screening.
+
+    All values are planning **assumptions**, not measured data. They are consumed
+    only by the low-fidelity load-transfer / CG-sensitivity screening and imply no
+    vehicle-dynamics validation of any kind.
+    """
+
+    cg_height_mm: PositiveFloat = Field(400.0, le=2000, description="CG height above ground (assumption).")
+    track_width_mm: PositiveFloat = Field(1700.0, le=2500, description="Average track width (assumption).")
+    cg_longitudinal_bias: float = Field(
+        0.47, gt=0, lt=1, description="Static fraction of weight on the front axle (assumption)."
+    )
+
+
 class MassItem(BaseModel):
     """A single mass contributor in the vehicle mass breakdown."""
 
@@ -130,6 +145,10 @@ class VehicleDefinition(BaseModel):
     aero_cd: PositiveFloat = Field(0.35, le=1.2, description="Drag coefficient.")
     frontal_area_m2: PositiveFloat = Field(1.9, le=4.0)
     rolling_resistance_coeff: PositiveFloat = Field(0.011, le=0.05)
+
+    # Chassis geometry assumptions for low-fidelity dynamics screening. Optional
+    # with deterministic defaults so existing behaviour is preserved.
+    chassis: ChassisGeometry = Field(default_factory=ChassisGeometry)
 
     mass_breakdown: list[MassItem] = Field(default_factory=list)
     glider_mass_kg: NonNegativeFloat = Field(
