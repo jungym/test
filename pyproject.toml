@@ -1,0 +1,59 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "safecopy-core"
+version = "0.1.0"
+description = "AI 시대의 개인·소규모 조직용 로컬 데이터 방화벽 (local data firewall)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "Proprietary" }
+dependencies = [
+    "cryptography>=42.0",
+]
+
+[project.optional-dependencies]
+# Clipboard backends. pyperclip works cross-platform for development;
+# pywin32 is the production backend on Windows 11 (MVP target).
+clipboard = ["pyperclip>=1.8"]
+windows = ["pywin32>=306; sys_platform == 'win32'"]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.4",
+    "black>=24.0",
+    "mypy>=1.10",
+]
+
+[project.scripts]
+safecopy = "safecopy_core.__main__:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/safecopy_core"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+packages = ["safecopy_core"]
+mypy_path = "src"
+
+# pyperclip is an optional, untyped backend dependency.
+[[tool.mypy.overrides]]
+module = "pyperclip"
+ignore_missing_imports = true
