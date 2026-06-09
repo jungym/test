@@ -8,14 +8,20 @@ explicit instruction.
 
 Extend the design-support model with a small set of additional screening outputs
 and a structured gate-status field, keeping the same hard rules: low-fidelity
-screening only, human-reviewed, no certification / production / road-legal /
-supplier-confirmed / real-world-prediction claims.
+screening only, human-reviewed, no certification, production, road-legality,
+supplier-confirmation, or real-world-prediction claims.
 
-> **Progress:** Item 1 (S-1 per-branch gate-status field) has been **implemented**
-> on `haen-standalone-extraction` (`GateStatus` enum + `Branch.gate_status` in
-> `haen/vehicle_definition.py`, seed values in `haen/data/branches.yaml`, tests in
-> `tests/test_gate_status.py`). It is a schema/governance change only and consumes
-> no new behaviour. Items 2–6 remain **not started**.
+> **Progress:**
+> - Item 1 (S-1 per-branch gate-status field) — **implemented** (`GateStatus`
+>   enum + `Branch.gate_status` in `haen/vehicle_definition.py`, seed values in
+>   `haen/data/branches.yaml`, tests in `tests/test_gate_status.py`).
+> - Item 2 (braking screening) — **implemented** as a standalone screening
+>   function: `screen_braking()` / `BrakingScreening` in
+>   `haen/low_fidelity_simulation.py` with a new `DataLabel` governance enum in
+>   `haen/governance.py`; tests in `tests/test_braking_screening.py`. Idealized
+>   constant-friction model only (no drag/ABS/load-transfer/CG/regen). **Not**
+>   yet integrated into the report/CLI/dashboard — that is Item 5.
+> - Items 3–6 remain **not started**.
 
 ## Candidate items
 
@@ -45,8 +51,8 @@ labelled, with sane defaults) to `VehicleDefinition`:
   for vehicle-dynamics simulation or testing.
 - All new report text passes the forbidden-claim checker (governance gate).
 - No new forbidden territory: no CFD, no crash/thermal/high-fidelity dynamics, no
-  certification/production/road-legal/supplier-confirmed claims.
-- Existing behaviour and the 89 passing tests must remain green.
+  certification, production, road-legality, or supplier-confirmation claims.
+- Existing behaviour and all existing tests must remain green.
 
 ## Proposed sequencing
 
@@ -67,7 +73,8 @@ labelled, with sane defaults) to `VehicleDefinition`:
 ## Out of scope for Gate 2
 
 High-fidelity CFD, crash simulation, thermal simulation, real-world performance
-claims, certification/production/road-legal/supplier-confirmed claims, autonomy.
+claims, certification, production, road-legality and supplier-confirmation
+claims, autonomy.
 
 ## Decision needed
 

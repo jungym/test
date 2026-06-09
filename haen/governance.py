@@ -145,6 +145,27 @@ class AssumptionStatus(str, Enum):
     RETIRED = "retired"     # superseded or no longer used
 
 
+class DataLabel(str, Enum):
+    """Provenance label for a data value (governance metadata).
+
+    Records how a value was obtained so humans can judge how much to trust it.
+    It carries **no engineering-validation meaning**. In particular
+    ``LOW_FIDELITY_SCREENING`` marks a coarse screening estimate — not a
+    measured, confirmed, or validated result — and ``VERIFIED`` means a human
+    checked the data's provenance, not that any engineering performance was
+    proven.
+    """
+
+    VERIFIED = "verified"
+    PUBLIC_SOURCE = "public_source"
+    CALCULATED = "calculated"
+    ASSUMPTION = "assumption"
+    TARGET = "target"
+    PLACEHOLDER = "placeholder"
+    UNKNOWN = "unknown"
+    LOW_FIDELITY_SCREENING = "low_fidelity_screening"
+
+
 @dataclass
 class Assumption:
     """A single engineering assumption used to produce an output."""

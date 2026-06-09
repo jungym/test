@@ -15,6 +15,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from .governance import Confidence, DataLabel
 from .vehicle_definition import VehicleDefinition
 
 RHO_AIR = 1.225      # kg/m^3, sea-level standard
@@ -135,3 +136,87 @@ def simulate(vehicle: VehicleDefinition, *, drivetrain_eff: float | None = None,
 
 def simulate_all(vehicles: list[VehicleDefinition], **kwargs) -> list[SimResult]:
     return [simulate(v, **kwargs) for v in vehicles]
+
+
+# --------------------------------------------------------------------------- #
+# Braking screening (Review Gate 2, Item 2)
+# --------------------------------------------------------------------------- #
+# Default screening assumptions — clearly assumptions, overridable by the caller.
+DEFAULT_BRAKING_INITIAL_SPEED_KPH = 100.0
+DEFAULT_TYRE_FRICTION_COEFFICIENT = 1.0  # assumption: dry high-performance tyre
+
+
+@dataclass(frozen=True)
+class BrakingScreening:
+    """A low-fidelity braking *screening* estimate (idealized point model).
+
+    This is a screening comparison aid only. It is **not** brake-system design,
+    ABS/tyre validation, road testing, or homologation evidence. The stopping
+    distance is an idealized estimate from a single constant-friction assumption;
+    it is not measured and must not be read as a confirmed figure. Provenance is
+    declared via ``source_type``/``confidence``/``label`` (governance metadata).
+    """
+
+    vehicle_id: str
+    initial_speed_kph: float
+    tyre_friction_coefficient: float
+    gravity_mps2: float
+    deceleration_mps2: float
+    stopping_distance_m: float
+    source_type: str = "screening_assumption"
+    confidence: Confidence = Confidence.LOW
+    label: DataLabel = DataLabel.LOW_FIDELITY_SCREENING
+    notes: str = (
+        "Low-fidelity braking screening (deceleration = mu*g; stopping distance "
+        "= v^2/(2*mu*g)). Idealized constant-friction point model: ignores "
+        "aerodynamics, ABS, brake bias, load transfer, downforce, regen, fade "
+        "and tyre-temperature effects. Not brake-system design; the figures are "
+        "screening estimates, neither measured nor a guarantee of performance."
+    )
+
+    @property
+    def assumptions(self) -> dict[str, float]:
+        """The labelled input assumptions behind this screening estimate."""
+        return {
+            "initial_speed_kph": self.initial_speed_kph,
+            "tyre_friction_coefficient": self.tyre_friction_coefficient,
+            "gravity_mps2": self.gravity_mps2,
+        }
+
+
+def screen_braking(
+    *,
+    initial_speed_kph: float = DEFAULT_BRAKING_INITIAL_SPEED_KPH,
+    tyre_friction_coefficient: float = DEFAULT_TYRE_FRICTION_COEFFICIENT,
+    gravity_mps2: float = G,
+    vehicle_id: str = "",
+) -> BrakingScreening:
+    """Compute a low-fidelity braking screening estimate from labelled assumptions.
+
+    Uses the idealized constant-friction model only::
+
+        deceleration_mps2 = tyre_friction_coefficient * gravity_mps2
+        stopping_distance_m = (initial_speed_mps ** 2) / (2 * deceleration_mps2)
+
+    The result is mass-independent under this model. Raises ``ValueError`` for
+    non-positive speed, friction or gravity (mirrors the positive-value
+    conventions used by the schema). Screening only — see :class:`BrakingScreening`.
+    """
+    if initial_speed_kph <= 0:
+        raise ValueError("initial_speed_kph must be positive")
+    if tyre_friction_coefficient <= 0:
+        raise ValueError("tyre_friction_coefficient must be positive")
+    if gravity_mps2 <= 0:
+        raise ValueError("gravity_mps2 must be positive")
+
+    v_mps = initial_speed_kph / 3.6
+    deceleration = tyre_friction_coefficient * gravity_mps2
+    stopping_distance = v_mps**2 / (2.0 * deceleration)
+    return BrakingScreening(
+        vehicle_id=vehicle_id,
+        initial_speed_kph=round(initial_speed_kph, 1),
+        tyre_friction_coefficient=tyre_friction_coefficient,
+        gravity_mps2=gravity_mps2,
+        deceleration_mps2=round(deceleration, 3),
+        stopping_distance_m=round(stopping_distance, 2),
+    )
