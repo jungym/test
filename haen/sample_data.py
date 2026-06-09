@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from .governance import Assumption, AssumptionLedger, AssumptionStatus, Confidence
+from .governance import Assumption, AssumptionLedger, AssumptionStatus, Confidence, DataLabel
 from .packaging import Box, Component
 from .supplier_evidence import (
     EngagementStatus,
@@ -58,12 +58,37 @@ def build_sample_fleet() -> list[VehicleDefinition]:
         frontal_area_m2=1.92,
     )
     bev.mass_breakdown = [
-        MassItem(name="Carbon monocoque", mass_kg=180, group="structure"),
-        MassItem(name="Body panels & closures", mass_kg=120, group="body"),
-        MassItem(name="Battery pack", mass_kg=bev.energy_storage.storage_mass_kg, group="energy"),
-        MassItem(name="E-motors & inverters", mass_kg=190, group="powertrain"),
-        MassItem(name="Suspension & wheels", mass_kg=240, group="chassis"),
-        MassItem(name="Interior & occupants allowance", mass_kg=210, group="interior"),
+        MassItem(
+            name="Carbon monocoque", mass_kg=180, group="structure",
+            label=DataLabel.ASSUMPTION, source_type="engineering_assumption",
+            confidence=Confidence.LOW, assumption_notes="Class-typical CFRP tub mass (assumption).",
+        ),
+        MassItem(
+            name="Body panels & closures", mass_kg=120, group="body",
+            label=DataLabel.ASSUMPTION, source_type="engineering_assumption",
+            confidence=Confidence.LOW, assumption_notes="Composite body set (assumption).",
+        ),
+        MassItem(
+            name="Battery pack", mass_kg=bev.energy_storage.storage_mass_kg, group="energy",
+            label=DataLabel.CALCULATED, source_type="calculated",
+            confidence=Confidence.MEDIUM,
+            assumption_notes="Derived from usable energy / pack gravimetric density.",
+        ),
+        MassItem(
+            name="E-motors & inverters", mass_kg=190, group="powertrain",
+            label=DataLabel.ASSUMPTION, source_type="engineering_assumption",
+            confidence=Confidence.LOW, assumption_notes="Dual-motor + inverter set (assumption).",
+        ),
+        MassItem(
+            name="Suspension & wheels", mass_kg=240, group="chassis",
+            label=DataLabel.ASSUMPTION, source_type="engineering_assumption",
+            confidence=Confidence.LOW, assumption_notes="Corners, uprights, wheels/tyres (assumption).",
+        ),
+        MassItem(
+            name="Interior & occupants allowance", mass_kg=210, group="interior",
+            label=DataLabel.ASSUMPTION, source_type="engineering_assumption",
+            confidence=Confidence.LOW, assumption_notes="Interior + 2 occupants allowance (assumption).",
+        ),
     ]
 
     # GT-1H 700 bar H2 halo branch.

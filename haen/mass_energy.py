@@ -9,7 +9,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .vehicle_definition import VehicleDefinition
+from .governance import Confidence, DataLabel
+from .vehicle_definition import EnergyItem, VehicleDefinition
 
 
 def mass_summary(vehicle: VehicleDefinition) -> dict[str, float]:
@@ -57,19 +58,100 @@ def compare(vehicles: list[VehicleDefinition]) -> pd.DataFrame:
 
 def mass_breakdown_table(vehicle: VehicleDefinition) -> pd.DataFrame:
     """Mass breakdown for a single vehicle, with percentage of curb mass."""
+    cols = ["name", "group", "mass_kg", "unit", "pct_of_curb",
+            "label", "source_type", "confidence", "assumption_notes", "metadata_complete"]
     if not vehicle.mass_breakdown:
-        return pd.DataFrame(columns=["name", "group", "mass_kg", "pct_of_curb"])
+        return pd.DataFrame(columns=cols)
     total = vehicle.curb_mass_kg
     rows = [
         {
             "name": item.name,
             "group": item.group,
             "mass_kg": round(item.mass_kg, 1),
+            "unit": item.unit,
             "pct_of_curb": round(100.0 * item.mass_kg / total, 1) if total else 0.0,
+            "label": item.label.value,
+            "source_type": item.source_type,
+            "confidence": item.confidence.value,
+            "assumption_notes": item.assumption_notes,
+            "metadata_complete": item.metadata_complete(),
         }
         for item in vehicle.mass_breakdown
     ]
     return pd.DataFrame(rows)
+
+
+def energy_line_items(vehicle: VehicleDefinition) -> list[EnergyItem]:
+    """Derive labelled energy line items from a vehicle's energy storage.
+
+    Each item carries value/unit and governance metadata (label/source_type/
+    confidence/assumption_notes). These are planning assumptions, not validated
+    figures.
+    """
+    es = vehicle.energy_storage
+    return [
+        EnergyItem(
+            name="usable_energy",
+            value=round(es.usable_energy_kwh, 2),
+            unit="kWh",
+            label=DataLabel.ASSUMPTION,
+            source_type="branch_assumption",
+            confidence=Confidence.LOW,
+            assumption_notes=f"Usable energy for {es.storage_type} (planning assumption).",
+        ),
+        EnergyItem(
+            name="gravimetric_energy_density",
+            value=round(es.gravimetric_density_wh_per_kg, 2),
+            unit="Wh/kg",
+            label=DataLabel.ASSUMPTION,
+            source_type="branch_assumption",
+            confidence=Confidence.LOW,
+            assumption_notes="System-level gravimetric density (planning assumption).",
+        ),
+        EnergyItem(
+            name="implied_storage_mass",
+            value=round(es.storage_mass_kg, 1),
+            unit="kg",
+            label=DataLabel.CALCULATED,
+            source_type="calculated",
+            confidence=Confidence.LOW,
+            assumption_notes="Derived = usable_energy / gravimetric_density.",
+        ),
+        EnergyItem(
+            name="refill_time",
+            value=round(es.refill_time_min, 1),
+            unit="min",
+            label=DataLabel.ASSUMPTION,
+            source_type="branch_assumption",
+            confidence=Confidence.LOW,
+            assumption_notes="Refill/recharge time (planning assumption).",
+        ),
+    ]
+
+
+def energy_line_items_table(vehicle: VehicleDefinition) -> pd.DataFrame:
+    """Labelled energy line items for a single vehicle as a DataFrame."""
+    rows = [
+        {
+            "name": it.name,
+            "value": it.value,
+            "unit": it.unit,
+            "label": it.label.value,
+            "source_type": it.source_type,
+            "confidence": it.confidence.value,
+            "assumption_notes": it.assumption_notes,
+            "metadata_complete": it.metadata_complete(),
+        }
+        for it in energy_line_items(vehicle)
+    ]
+    return pd.DataFrame(rows)
+
+
+def metadata_completeness(vehicle: VehicleDefinition) -> dict[str, int]:
+    """Count complete vs incomplete metadata across mass + energy line items."""
+    items = list(vehicle.mass_breakdown) + energy_line_items(vehicle)
+    complete = sum(1 for it in items if it.metadata_complete())
+    return {"total": len(items), "complete": complete, "incomplete": len(items) - complete}
 
 
 def delta_vs_baseline(vehicles: list[VehicleDefinition], baseline_id: str) -> pd.DataFrame:

@@ -14,6 +14,8 @@ from pathlib import Path
 import yaml
 from pydantic import BaseModel, Field, NonNegativeFloat, PositiveFloat, field_validator, model_validator
 
+from .governance import Confidence, DataLabel
+
 _DATA_DIR = Path(__file__).resolve().parent / "data"
 _BRANCHES_FILE = _DATA_DIR / "branches.yaml"
 
@@ -119,12 +121,45 @@ class ChassisGeometry(BaseModel):
     )
 
 
-class MassItem(BaseModel):
+class LabeledItem(BaseModel):
+    """Governance metadata carried by every mass/energy line item (Gate 3).
+
+    Each value is accompanied by its provenance so a human can judge how much to
+    trust it. Defaults are deterministic and conservative; ``label`` and
+    ``confidence`` are validated enums (invalid values fail). Use
+    :meth:`metadata_complete` to detect line items that still need provenance.
+    """
+
+    unit: str = ""
+    label: DataLabel = DataLabel.ASSUMPTION
+    source_type: str = "assumption"
+    confidence: Confidence = Confidence.LOW
+    assumption_notes: str = ""
+
+    def metadata_complete(self) -> bool:
+        """True when provenance is substantively filled in (not just defaulted)."""
+        return bool(self.unit and self.source_type and self.assumption_notes)
+
+
+class MassItem(LabeledItem):
     """A single mass contributor in the vehicle mass breakdown."""
 
     name: str
     mass_kg: NonNegativeFloat
     group: str = "other"  # e.g. structure, powertrain, energy, chassis, body, interior
+    unit: str = "kg"
+
+    @property
+    def value(self) -> float:
+        return self.mass_kg
+
+
+class EnergyItem(LabeledItem):
+    """A single energy line item (e.g. usable energy, energy density, refill time)."""
+
+    name: str
+    value: float = Field(..., ge=0)
+    group: str = "energy"
 
 
 class VehicleDefinition(BaseModel):
