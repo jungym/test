@@ -327,3 +327,128 @@ def screen_load_transfer_for(vehicle: VehicleDefinition, **kwargs) -> LoadTransf
         vehicle_id=vehicle.id,
         **kwargs,
     )
+
+
+# --------------------------------------------------------------------------- #
+# CG-sensitivity screening (Review Gate 2, Item 4)
+# --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class CgSensitivityRow:
+    """One CG-height sample in a sensitivity sweep."""
+
+    cg_height_mm: float
+    longitudinal_load_transfer_n: float
+    lateral_load_transfer_n: float
+
+
+@dataclass(frozen=True)
+class CgSensitivityScreening:
+    """Low-fidelity CG-height sensitivity *screening* sweep.
+
+    Recomputes the rigid-body load-transfer magnitudes across a set of CG-height
+    assumptions to show sensitivity. Screening only — **not** vehicle-dynamics
+    validation, suspension kinematics, a tyre model, or aero/downforce.
+    """
+
+    vehicle_id: str
+    mass_kg: float
+    wheelbase_mm: float
+    track_width_mm: float
+    longitudinal_decel_mps2: float
+    lateral_accel_mps2: float
+    rows: tuple[CgSensitivityRow, ...]
+    source_type: str = "screening_assumption"
+    confidence: Confidence = Confidence.LOW
+    label: DataLabel = DataLabel.LOW_FIDELITY_SCREENING
+    notes: str = (
+        "Low-fidelity CG-sensitivity screening: rigid-body load transfer "
+        "(dW = m*a*h/base) swept over CG-height assumptions. Ignores suspension "
+        "kinematics, tyre behaviour, downforce and aero. Not vehicle-dynamics "
+        "validation; figures are screening estimates, neither measured nor a "
+        "guarantee."
+    )
+
+    @property
+    def assumptions(self) -> dict[str, float]:
+        return {
+            "mass_kg": self.mass_kg,
+            "wheelbase_mm": self.wheelbase_mm,
+            "track_width_mm": self.track_width_mm,
+            "longitudinal_decel_mps2": self.longitudinal_decel_mps2,
+            "lateral_accel_mps2": self.lateral_accel_mps2,
+        }
+
+
+def screen_cg_sensitivity(
+    *,
+    mass_kg: float,
+    wheelbase_mm: float,
+    track_width_mm: float,
+    cg_heights_mm: list[float],
+    longitudinal_decel_mps2: float = DEFAULT_LONGITUDINAL_DECEL_MPS2,
+    lateral_accel_mps2: float = DEFAULT_LATERAL_ACCEL_MPS2,
+    vehicle_id: str = "",
+) -> CgSensitivityScreening:
+    """Sweep CG height and report load-transfer sensitivity (screening only).
+
+    ``cg_heights_mm`` is sorted ascending for deterministic output. Raises
+    ``ValueError`` for an empty sweep, non-positive mass/geometry/CG, or negative
+    accelerations.
+    """
+    if not cg_heights_mm:
+        raise ValueError("cg_heights_mm must be a non-empty list")
+    if mass_kg <= 0:
+        raise ValueError("mass_kg must be positive")
+    if wheelbase_mm <= 0 or track_width_mm <= 0:
+        raise ValueError("wheelbase_mm and track_width_mm must be positive")
+    if any(h <= 0 for h in cg_heights_mm):
+        raise ValueError("all cg_heights_mm must be positive")
+    if longitudinal_decel_mps2 < 0 or lateral_accel_mps2 < 0:
+        raise ValueError("accelerations must be non-negative")
+
+    rows = tuple(
+        CgSensitivityRow(
+            cg_height_mm=round(h, 1),
+            longitudinal_load_transfer_n=round(
+                mass_kg * longitudinal_decel_mps2 * (h / wheelbase_mm), 1
+            ),
+            lateral_load_transfer_n=round(
+                mass_kg * lateral_accel_mps2 * (h / track_width_mm), 1
+            ),
+        )
+        for h in sorted(cg_heights_mm)
+    )
+    return CgSensitivityScreening(
+        vehicle_id=vehicle_id,
+        mass_kg=round(mass_kg, 1),
+        wheelbase_mm=round(wheelbase_mm, 1),
+        track_width_mm=round(track_width_mm, 1),
+        longitudinal_decel_mps2=round(longitudinal_decel_mps2, 3),
+        lateral_accel_mps2=round(lateral_accel_mps2, 3),
+        rows=rows,
+    )
+
+
+def screen_cg_sensitivity_for(
+    vehicle: VehicleDefinition,
+    *,
+    cg_heights_mm: list[float] | None = None,
+    deltas_mm: tuple[float, ...] = (-100, -50, 0, 50, 100),
+    **kwargs,
+) -> CgSensitivityScreening:
+    """CG-sensitivity sweep seeded from a vehicle.
+
+    When ``cg_heights_mm`` is not given, sweeps the vehicle's assumed CG height by
+    ``deltas_mm`` (dropping any non-positive result).
+    """
+    base = vehicle.chassis.cg_height_mm
+    if cg_heights_mm is None:
+        cg_heights_mm = [base + d for d in deltas_mm if base + d > 0]
+    return screen_cg_sensitivity(
+        mass_kg=vehicle.curb_mass_kg,
+        wheelbase_mm=vehicle.dimensions.wheelbase_mm,
+        track_width_mm=vehicle.chassis.track_width_mm,
+        cg_heights_mm=cg_heights_mm,
+        vehicle_id=vehicle.id,
+        **kwargs,
+    )
