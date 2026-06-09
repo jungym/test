@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from datetime import date
 
 from .governance import AssumptionLedger, assert_clean
-from .supplier_evidence import SupplierEvidenceTable
+from .supplier_evidence import EngagementStatus, Partner, SupplierEvidenceTable
 
 
 @dataclass
@@ -70,13 +70,17 @@ def build_rfi(
     ledger: AssumptionLedger | None = None,
     evidence: SupplierEvidenceTable | None = None,
     expected_components: list[str] | None = None,
+    partners: list["Partner"] | None = None,
     recipient: str = "TBD",
 ) -> RFI:
-    """Assemble an RFI from open assumptions and evidence gaps.
+    """Assemble an RFI from open assumptions, evidence gaps and RFI-candidate partners.
 
     - Each open, low-confidence assumption becomes a high-priority RFI item.
     - Each unverified evidence record becomes a medium-priority item.
     - Each expected component lacking any evidence becomes a high-priority item.
+    - Each RFI-candidate partner becomes a partner-directed RFI item. Partners
+      that are watch-branch or technology-observation are intentionally NOT
+      contacted (no item generated).
     """
     items: list[RFIItem] = []
     counter = 1
@@ -135,5 +139,28 @@ def build_rfi(
                     )
                 )
                 counter += 1
+
+    if partners:
+        for p in partners:
+            if p.engagement_status != EngagementStatus.RFI_CANDIDATE:
+                continue  # watch-branch / tech-observation partners are not contacted
+            if branch not in ("all", p.branch) and p.branch != "all":
+                continue
+            level = f" (RFI Level {p.rfi_level})" if p.rfi_level else ""
+            items.append(
+                RFIItem(
+                    ref=f"P-{counter:03d}",
+                    topic=f"{p.name}{level}",
+                    question=(
+                        f"RFI candidate{level}: please provide information on "
+                        f"{p.domain or 'the relevant subsystem'} to inform a future "
+                        f"information request. This is an information request only, "
+                        f"not a supplier selection or commitment."
+                    ),
+                    rationale=f"Partner engagement status: {p.engagement_status.value}.",
+                    priority="medium",
+                )
+            )
+            counter += 1
 
     return RFI(title=title, branch=branch, items=items, recipient=recipient)

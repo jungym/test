@@ -12,8 +12,10 @@ from datetime import date
 from .governance import Assumption, AssumptionLedger, AssumptionStatus, Confidence
 from .packaging import Box, Component
 from .supplier_evidence import (
+    EngagementStatus,
     EvidenceRecord,
     EvidenceType,
+    Partner,
     SupplierEvidenceTable,
     VerificationState,
 )
@@ -215,5 +217,54 @@ def build_sample_components() -> list[Component]:
             name="Cockpit",
             group="interior",
             box=Box(cx=0, cy=0, cz=720, size_x=1500, size_y=1400, size_z=900),
+        ),
+    ]
+
+
+def build_sample_partners() -> list[Partner]:
+    """Seed the HAEN partner/awareness registry.
+
+    None of these are confirmed or selected suppliers. Engagement status is
+    governance metadata only:
+      - Hylium  : Level 1 RFI candidate (LH2 storage) — may receive an RFI.
+      - Cryos / DALIM / Parity : watch branch (monitored only).
+      - KIMM    : technology observation (tracked for awareness).
+    """
+    return [
+        Partner(
+            name="Hylium",
+            engagement_status=EngagementStatus.RFI_CANDIDATE,
+            domain="LH2 cryogenic storage",
+            rfi_level=1,
+            branch="GT-1H-LH2",
+            notes="Level 1 RFI candidate; not a selected or confirmed supplier.",
+        ),
+        Partner(
+            name="Cryos",
+            engagement_status=EngagementStatus.WATCH_BRANCH,
+            domain="cryogenic systems",
+            branch="GT-1H-LH2",
+            notes="Watch branch — monitored only.",
+        ),
+        Partner(
+            name="DALIM",
+            engagement_status=EngagementStatus.WATCH_BRANCH,
+            domain="hydrogen systems",
+            branch="GT-1H-LH2",
+            notes="Watch branch — monitored only.",
+        ),
+        Partner(
+            name="Parity",
+            engagement_status=EngagementStatus.WATCH_BRANCH,
+            domain="energy systems",
+            branch="GT-1H-LH2",
+            notes="Watch branch — monitored only.",
+        ),
+        Partner(
+            name="KIMM",
+            engagement_status=EngagementStatus.TECHNOLOGY_OBSERVATION,
+            domain="research institute",
+            branch="all",
+            notes="Technology observation — tracked for awareness only.",
         ),
     ]

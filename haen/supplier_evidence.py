@@ -32,6 +32,32 @@ class VerificationState(str, Enum):
     DISPUTED = "disputed"         # contradicted by other evidence
 
 
+class EngagementStatus(str, Enum):
+    """Relationship status of a partner/supplier (governance metadata only).
+
+    Describes how a partner is being engaged in the programme. It is **not** a
+    confirmation that any partner is selected, contracted, or that any supply is
+    secured. ``RFI_CANDIDATE`` means "we may send a Request For Information",
+    nothing more.
+    """
+
+    RFI_CANDIDATE = "rfi_candidate"             # may receive an RFI
+    WATCH_BRANCH = "watch_branch"               # monitored only
+    TECHNOLOGY_OBSERVATION = "technology_observation"  # tracked for tech awareness
+    NONE = "none"                               # no engagement
+
+
+class Partner(BaseModel):
+    """A partner/supplier the programme is aware of (not a confirmed supplier)."""
+
+    name: str
+    engagement_status: EngagementStatus
+    domain: str = ""                  # e.g. "LH2 storage", "fuel cell"
+    rfi_level: int | None = Field(None, ge=1, description="RFI level for RFI candidates, if any.")
+    branch: str = "all"
+    notes: str = ""
+
+
 class EvidenceRecord(BaseModel):
     """A single piece of supplier evidence."""
 
