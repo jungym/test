@@ -118,6 +118,20 @@ def _page_mass_energy(fleet) -> None:
     )
     st.plotly_chart(visualization.mass_energy_bar(df, metric=metric), use_container_width=True)
 
+    st.subheader("Energy-scenario comparison (internal — comparison only)")
+    st.dataframe(mass_energy.energy_scenario_comparison(fleet), use_container_width=True)
+
+    st.subheader("Mass / energy metadata completeness")
+    rows = []
+    for v in fleet:
+        s = mass_energy.metadata_completeness(v)
+        rows.append({"id": v.id, **s})
+    st.dataframe(pd.DataFrame(rows).set_index("id"), use_container_width=True)
+    vid = st.selectbox("Mass line items (with provenance)", [v.id for v in fleet])
+    vehicle = {v.id: v for v in fleet}[vid]
+    st.dataframe(mass_energy.mass_breakdown_table(vehicle), use_container_width=True)
+    st.dataframe(mass_energy.energy_line_items_table(vehicle), use_container_width=True)
+
 
 def _page_simulation(fleet) -> None:
     st.header("Low-fidelity simulation (indicative only)")
@@ -205,7 +219,15 @@ def _page_packaging(by_id) -> None:
     st.header("Packaging check")
     vid = st.selectbox("Vehicle (for envelope)", list(by_id))
     components = build_sample_components()
-    st.plotly_chart(visualization.packaging_topview(components), use_container_width=True)
+    st.caption(
+        "Internal-only, low-fidelity packaging (AABB). Not CAD or geometric validation."
+    )
+    st.plotly_chart(
+        visualization.packaging_topview(components, by_id[vid]), use_container_width=True
+    )
+    st.plotly_chart(
+        visualization.packaging_sideview(components, by_id[vid]), use_container_width=True
+    )
 
     overlaps = detect_overlaps(components)
     st.subheader("Interference (overlap) detection")
