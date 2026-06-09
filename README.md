@@ -52,7 +52,8 @@ Requires Python 3.11+.
 # CLI
 haen compare                   # branch comparison + trade-off ranking
 haen simulate                  # low-fidelity performance estimates
-haen rfi --branch GT-1H        # generate an RFI from open gaps
+haen screen                    # braking + load-transfer dynamics screening
+haen rfi --branch GT-1H        # generate an RFI from open gaps (incl. partners)
 haen dossier --branch GT-1 --out out/dossier.md
 haen check path/to/text.md     # forbidden-claim check
 

@@ -11,17 +11,22 @@ and a structured gate-status field, keeping the same hard rules: low-fidelity
 screening only, human-reviewed, no certification, production, road-legality,
 supplier-confirmation, or real-world-prediction claims.
 
-> **Progress:**
-> - Item 1 (S-1 per-branch gate-status field) — **implemented** (`GateStatus`
->   enum + `Branch.gate_status` in `haen/vehicle_definition.py`, seed values in
->   `haen/data/branches.yaml`, tests in `tests/test_gate_status.py`).
-> - Item 2 (braking screening) — **implemented** as a standalone screening
->   function: `screen_braking()` / `BrakingScreening` in
->   `haen/low_fidelity_simulation.py` with a new `DataLabel` governance enum in
->   `haen/governance.py`; tests in `tests/test_braking_screening.py`. Idealized
->   constant-friction model only (no drag/ABS/load-transfer/CG/regen). **Not**
->   yet integrated into the report/CLI/dashboard — that is Item 5.
-> - Items 3–6 remain **not started**.
+> **Progress (all Gate 2 items implemented):**
+> - Item 1 — gate-status field: `GateStatus` + `Branch.gate_status`
+>   (`tests/test_gate_status.py`). **Done.**
+> - Item 2 — braking screening: `screen_braking()`/`BrakingScreening` +
+>   `DataLabel` (`tests/test_braking_screening.py`). **Done.**
+> - Item 3 — load-transfer screening: `ChassisGeometry` +
+>   `screen_load_transfer()` (`tests/test_load_transfer.py`). **Done.**
+> - Item 4 — CG-sensitivity sweep: `screen_cg_sensitivity()`
+>   (`tests/test_cg_sensitivity.py`). **Done.**
+> - Item 5 — report/gate integration: `ReportMetadata`, dossier dynamics-screening
+>   section, per-branch gate-status table, CLI `screen`, dashboard page
+>   (`tests/test_report_integration.py`). **Done.**
+> - Item 6 — tests for all of the above. **Done.**
+>
+> All screening outputs are idealized rigid-body models (no drag/ABS/tyre/
+> suspension/aero/regen) and labelled `low_fidelity_screening`.
 
 ## Candidate items
 
