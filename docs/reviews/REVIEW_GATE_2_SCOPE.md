@@ -11,6 +11,12 @@ and a structured gate-status field, keeping the same hard rules: low-fidelity
 screening only, human-reviewed, no certification / production / road-legal /
 supplier-confirmed / real-world-prediction claims.
 
+> **Progress:** Item 1 (S-1 per-branch gate-status field) has been **implemented**
+> on `haen-standalone-extraction` (`GateStatus` enum + `Branch.gate_status` in
+> `haen/vehicle_definition.py`, seed values in `haen/data/branches.yaml`, tests in
+> `tests/test_gate_status.py`). It is a schema/governance change only and consumes
+> no new behaviour. Items 2–6 remain **not started**.
+
 ## Candidate items
 
 | # | Item | Summary | Module(s) | Risk |

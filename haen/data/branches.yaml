@@ -7,6 +7,9 @@ branches:
   - id: GT-1
     name: GT-1 BEV baseline
     status: baseline
+    # gate_status: governance/lifecycle metadata only (see GateStatus enum); it
+    # records review-gate state, NOT any engineering validation claim.
+    gate_status: in_progress
     powertrain: bev
     description: >-
       Battery-electric baseline architecture. Reference point for all
@@ -24,6 +27,7 @@ branches:
   - id: GT-1H
     name: GT-1H 700bar H2 halo branch
     status: halo
+    gate_status: rfi_candidate
     powertrain: h2_fuel_cell
     description: >-
       Hydrogen fuel-cell halo branch using 700 bar compressed gaseous hydrogen
@@ -43,6 +47,7 @@ branches:
   - id: GT-1H-LH2
     name: GT-1H LH2 watch branch
     status: watch
+    gate_status: watch_branch
     powertrain: h2_fuel_cell
     description: >-
       Liquid-hydrogen watch branch. Tracked for future potential (higher energy

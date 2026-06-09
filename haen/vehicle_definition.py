@@ -30,6 +30,30 @@ class BranchStatus(str, Enum):
     WATCH = "watch"
 
 
+class GateStatus(str, Enum):
+    """Structured lifecycle / review-gate status for a branch (S-1).
+
+    This is **governance metadata only** — it records where a branch sits in the
+    human review/gate process. It carries **no engineering-validation meaning**
+    and makes no assertion of road-legality, homologation readiness,
+    crashworthiness, production feasibility, supplier confirmation, design
+    completeness, certifiability, or real-world validation. ``passed``/``gated``
+    refer strictly to a *review gate* being cleared in process terms, not to any
+    engineering claim.
+    """
+
+    NOT_STARTED = "not_started"        # no gate activity yet (default)
+    IN_PROGRESS = "in_progress"        # actively being worked
+    BLOCKED = "blocked"                # progress blocked by a dependency
+    WATCH_BRANCH = "watch_branch"      # monitored only, not actively developed
+    RFI_CANDIDATE = "rfi_candidate"    # has open information gaps to resolve
+    REVIEW_REQUIRED = "review_required"  # awaiting human review
+    GATED = "gated"                    # held at a review gate pending decision
+    PASSED = "passed"                  # cleared a review gate (process only)
+    CLOSED = "closed"                  # no longer pursued
+    SUPERSEDED = "superseded"          # replaced by another branch/item
+
+
 class Dimensions(BaseModel):
     """External dimensions and key packaging hardpoints (millimetres)."""
 
@@ -152,6 +176,10 @@ class Branch(BaseModel):
     drivetrain: str
     buffer_battery_kwh: NonNegativeFloat = 0.0
     notes: str = ""
+    # Governance metadata (S-1): lifecycle/review-gate status. Defaults to
+    # NOT_STARTED when absent so behaviour is deterministic. Not an engineering
+    # claim — see GateStatus docstring.
+    gate_status: GateStatus = GateStatus.NOT_STARTED
 
 
 def load_branches(path: str | Path | None = None) -> dict[str, Branch]:
@@ -178,6 +206,8 @@ def load_branches(path: str | Path | None = None) -> dict[str, Branch]:
             drivetrain=pd["drivetrain"],
             buffer_battery_kwh=pd.get("buffer_battery_kwh", 0.0),
             notes=entry.get("notes", ""),
+            # Missing gate_status -> deterministic NOT_STARTED default.
+            gate_status=GateStatus(entry.get("gate_status", GateStatus.NOT_STARTED.value)),
         )
         branches[branch.id] = branch
     return branches
