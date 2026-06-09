@@ -98,7 +98,12 @@ def _cmd_rfi(args) -> int:
 def _cmd_dossier(args) -> int:
     from .report_builder import build_dossier, save_dossier
     from .rfi_builder import build_rfi
-    from .sample_data import build_sample_evidence, build_sample_fleet, build_sample_ledger
+    from .sample_data import (
+        build_sample_components,
+        build_sample_evidence,
+        build_sample_fleet,
+        build_sample_ledger,
+    )
 
     fleet = build_sample_fleet()
     ledger = build_sample_ledger()
@@ -111,6 +116,7 @@ def _cmd_dossier(args) -> int:
         evidence=evidence,
         ledger=ledger,
         rfi=rfi,
+        components=build_sample_components(),
     )
     if args.out:
         path = save_dossier(text, args.out)

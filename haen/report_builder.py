@@ -18,6 +18,7 @@ from . import design_space_explorer as dse
 from . import low_fidelity_simulation as sim
 from . import mass_energy
 from .governance import AssumptionLedger, ReportMetadata, assert_clean, check_text
+from .packaging import Component, check_envelope, detect_overlaps
 from .rfi_builder import RFI
 from .supplier_evidence import SupplierEvidenceTable
 from .vehicle_definition import VehicleDefinition, load_branches
@@ -109,6 +110,58 @@ def _dynamics_screening_md(vehicles: list[VehicleDefinition]) -> str:
     return _df_to_md(df) + note
 
 
+def _packaging_md(components: list[Component] | None, vehicle: VehicleDefinition) -> str:
+    """Internal packaging section: AABB extents, conflict summary, diagram refs."""
+    if not components:
+        return (
+            "_No packaging components supplied; packaging check not included in "
+            "this dossier build._"
+        )
+    comp_df = pd.DataFrame(
+        [
+            {
+                "component": c.name,
+                "group": c.group,
+                "x_mm": f"{c.box.min_x:.0f}..{c.box.max_x:.0f}",
+                "y_mm": f"{c.box.min_y:.0f}..{c.box.max_y:.0f}",
+                "z_mm": f"{c.box.min_z:.0f}..{c.box.max_z:.0f}",
+            }
+            for c in components
+        ]
+    ).set_index("component")
+
+    parts = ["**Components (axis-aligned bounding boxes, mm):**", "", _df_to_md(comp_df)]
+
+    overlaps = detect_overlaps(components)
+    if overlaps:
+        conf_df = pd.DataFrame(
+            [
+                {"a": o.a, "b": o.b, "overlap_volume_m3": round(o.overlap_volume_m3, 4)}
+                for o in overlaps
+            ]
+        )
+        parts += ["", f"**Conflicts (interferences) detected: {len(overlaps)}**", "",
+                  _df_to_md(conf_df, index=False)]
+    else:
+        parts += ["", "_No rigid-body interferences detected (low-fidelity AABB check)._"]
+
+    violations = check_envelope(components, vehicle)
+    if violations:
+        parts += ["", f"**Envelope violations: {len(violations)}** "
+                  "(component(s) protrude beyond the external envelope; see packaging module)."]
+    else:
+        parts += ["", "_All components fit within the external envelope (approximate)._"]
+
+    parts += [
+        "",
+        "_Internal-only, low-fidelity packaging (axis-aligned bounding boxes). "
+        "Interactive top/side diagrams are available via "
+        "`visualization.packaging_topview` / `packaging_sideview` and the "
+        "dashboard. Not CAD, and not geometric or packaging validation._",
+    ]
+    return "\n".join(parts)
+
+
 def _gate_status_md(vehicles: list[VehicleDefinition]) -> str:
     """Per-branch gate-status (governance metadata) for the vehicles' branches."""
     branches = load_branches()
@@ -134,6 +187,7 @@ def build_dossier(
     evidence: SupplierEvidenceTable | None = None,
     ledger: AssumptionLedger | None = None,
     rfi: RFI | None = None,
+    components: list[Component] | None = None,
     metadata: ReportMetadata | None = None,
     template_path: Path | None = None,
 ) -> str:
@@ -166,10 +220,7 @@ def build_dossier(
     else:
         rfi_md = "_No RFI generated._"
 
-    packaging_md = (
-        "_Packaging check not included in this dossier build; run the packaging "
-        "module and attach results._"
-    )
+    packaging_md = _packaging_md(components, primary)
 
     text = tmpl.format(
         programme=programme,
