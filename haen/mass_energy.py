@@ -154,6 +154,58 @@ def metadata_completeness(vehicle: VehicleDefinition) -> dict[str, int]:
     return {"total": len(items), "complete": complete, "incomplete": len(items) - complete}
 
 
+def energy_scenario_comparison(vehicles: list[VehicleDefinition]) -> pd.DataFrame:
+    """Internal energy-scenario comparison across branches (comparison only).
+
+    Compares stored-energy and energy-mass figures for the BEV / 700bar H2 / LH2
+    branches. These are planning assumptions and derived (calculated) values — NOT
+    performance, range, road or supplier claims. For human review only.
+    """
+    rows = []
+    for v in vehicles:
+        es = v.energy_storage
+        rows.append(
+            {
+                "id": v.id,
+                "branch": v.branch_id,
+                "branch_status": v.branch_status.value,
+                "storage_type": es.storage_type,
+                "usable_energy_kwh": round(es.usable_energy_kwh, 1),
+                "energy_density_wh_per_kg": round(es.gravimetric_density_wh_per_kg, 1),
+                "implied_storage_mass_kg": round(es.storage_mass_kg, 1),
+                "refill_time_min": round(es.refill_time_min, 1),
+                "specific_energy_kwh_per_t_vehicle": round(
+                    es.usable_energy_kwh / (v.curb_mass_kg / 1000.0), 2
+                ),
+                "energy_mass_fraction_pct": round(
+                    100.0 * es.storage_mass_kg / v.curb_mass_kg, 1
+                ),
+            }
+        )
+    return pd.DataFrame(rows).set_index("id")
+
+
+def energy_scenario_line_items(vehicles: list[VehicleDefinition]) -> pd.DataFrame:
+    """Long-form, fully-labelled energy line items across branches (metadata-rich)."""
+    rows = []
+    for v in vehicles:
+        for it in energy_line_items(v):
+            rows.append(
+                {
+                    "id": v.id,
+                    "branch": v.branch_id,
+                    "name": it.name,
+                    "value": it.value,
+                    "unit": it.unit,
+                    "label": it.label.value,
+                    "source_type": it.source_type,
+                    "confidence": it.confidence.value,
+                    "assumption_notes": it.assumption_notes,
+                }
+            )
+    return pd.DataFrame(rows)
+
+
 def delta_vs_baseline(vehicles: list[VehicleDefinition], baseline_id: str) -> pd.DataFrame:
     """Mass/energy deltas of each vehicle relative to a chosen baseline."""
     df = compare(vehicles)
