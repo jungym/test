@@ -119,7 +119,9 @@ def _page_mass_energy(fleet) -> None:
     st.plotly_chart(visualization.mass_energy_bar(df, metric=metric), use_container_width=True)
 
     st.subheader("Energy-scenario comparison (internal — comparison only)")
-    st.dataframe(mass_energy.energy_scenario_comparison(fleet), use_container_width=True)
+    scenario = mass_energy.energy_scenario_comparison(fleet)
+    st.dataframe(scenario, use_container_width=True)
+    st.plotly_chart(visualization.energy_scenario_chart(scenario), use_container_width=True)
 
     st.subheader("Mass / energy metadata completeness")
     rows = []

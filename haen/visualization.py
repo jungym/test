@@ -20,6 +20,28 @@ INTERNAL_PACKAGING_CAPTION = (
 )
 
 
+def energy_scenario_chart(df: pd.DataFrame):
+    """Plotly grouped bar of usable energy vs implied storage mass per scenario.
+
+    Expects the DataFrame from ``mass_energy.energy_scenario_comparison`` (index =
+    vehicle id). Comparison only — no performance/range/real-world claim.
+    """
+    import plotly.graph_objects as go
+
+    ids = list(df.index)
+    fig = go.Figure()
+    if "usable_energy_kwh" in df.columns:
+        fig.add_bar(x=ids, y=df["usable_energy_kwh"].tolist(), name="usable_energy_kwh")
+    if "implied_storage_mass_kg" in df.columns:
+        fig.add_bar(x=ids, y=df["implied_storage_mass_kg"].tolist(), name="implied_storage_mass_kg")
+    fig.update_layout(
+        barmode="group",
+        title="Energy-scenario comparison (INTERNAL — comparison only)",
+        xaxis_title="concept", yaxis_title="value",
+    )
+    return fig
+
+
 def mass_energy_bar(df: pd.DataFrame, *, metric: str = "curb_mass_kg"):
     """Plotly bar chart of a single metric across branches/vehicles."""
     import plotly.express as px
