@@ -131,6 +131,87 @@ class ForbiddenClaimError(ValueError):
 
 
 # --------------------------------------------------------------------------- #
+# Advisory semantic claim-risk layer (Review Gate 5, Item 7)
+# --------------------------------------------------------------------------- #
+# This layer is ADVISORY only. It surfaces phrasings that *resemble* a strong
+# claim and merit human review. It NEVER relaxes the hard, authoritative lexical
+# forbidden-claim gate (``check_text``/``assert_clean``) and is not exhaustive.
+@dataclass(frozen=True)
+class RiskFinding:
+    category: str
+    snippet: str
+    line: int
+    note: str
+    severity: str = "advisory"
+
+
+_SEM_CUES: list[tuple[str, re.Pattern]] = [
+    ("validation-adjacent",
+     re.compile(r"\b(validated|verified|proven|guaranteed|confirmed)\b", re.IGNORECASE)),
+    ("certification-adjacent",
+     re.compile(r"\b(certified|certifiable|homologat\w*|type[\s-]?approved|approved)\b", re.IGNORECASE)),
+    ("production-adjacent",
+     re.compile(r"\b(mass[\s-]?produc\w+|production[\s-]?ready|manufacturable)\b", re.IGNORECASE)),
+    ("legality-adjacent",
+     re.compile(r"\b(road[\s-]?legal\w*|street[\s-]?legal\w*|compliant)\b", re.IGNORECASE)),
+    ("completion-adjacent",
+     re.compile(r"\b(finali[sz]ed)\b", re.IGNORECASE)),
+    ("ko-claim-adjacent",
+     re.compile(r"(보장|입증|확정|인증\s*완료|양산\s*가능)")),
+]
+
+# Lines that are clearly disclaimers/negated-status are skipped wholesale — these
+# are the project's own safe framings and must not raise advisory noise.
+_DISCLAIMER_MARKERS = (
+    "makes no assertion", "no assertion", "does not assert", "nor that",
+    "not assessed", "not evaluated", "not performed", "not modelled",
+    "not a validated", "not for certification", "not vehicle-dynamics",
+)
+_NEG_TOKENS_EN = ("not ", "no ", "never", "without", "nor ", "n't", "non-", "not-")
+_NEG_TOKENS_KO = ("미", "안", "없", "않", "불가")
+
+
+def _is_negated(text: str, start: int, end: int) -> bool:
+    left = text[max(0, start - 25):start].lower()
+    right = text[end:end + 20].lower()
+    if any(tok in left or tok in right for tok in _NEG_TOKENS_EN):
+        return True
+    if any(tok in left or tok in right for tok in _NEG_TOKENS_KO):
+        return True
+    return False
+
+
+def semantic_risk_scan(text: str) -> list[RiskFinding]:
+    """Return ADVISORY semantic-risk findings (never authoritative).
+
+    Flags strong-claim-adjacent phrasings (English + Korean) that a human should
+    review against the forbidden-claim policy. Negation-aware to reduce noise on
+    safe framings. This does NOT replace :func:`check_text`, which remains the
+    hard gate.
+    """
+    findings: list[RiskFinding] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        low = line.lower()
+        if any(marker in low for marker in _DISCLAIMER_MARKERS):
+            continue  # project's own disclaimer/negated-status wording
+        for category, pattern in _SEM_CUES:
+            for m in pattern.finditer(line):
+                if _is_negated(line, m.start(), m.end()):
+                    continue
+                snippet = line.strip()[:120]
+                findings.append(
+                    RiskFinding(
+                        category=category,
+                        snippet=snippet,
+                        line=line_no,
+                        note=("strong-claim-adjacent phrasing; verify against the "
+                              "forbidden-claim policy (advisory only)"),
+                    )
+                )
+    return findings
+
+
+# --------------------------------------------------------------------------- #
 # Assumption ledger
 # --------------------------------------------------------------------------- #
 class Confidence(str, Enum):
