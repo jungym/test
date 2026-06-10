@@ -162,6 +162,32 @@ def _packaging_md(components: list[Component] | None, vehicle: VehicleDefinition
     return "\n".join(parts)
 
 
+def _mass_energy_md(vehicles: list[VehicleDefinition], primary: VehicleDefinition) -> str:
+    """Mass/energy comparison plus the primary vehicle's labelled line items."""
+    parts = [_df_to_md(mass_energy.compare(vehicles))]
+
+    breakdown = mass_energy.mass_breakdown_table(primary)
+    if not breakdown.empty:
+        parts += [
+            "", f"**{primary.id} — mass line items (with provenance):**", "",
+            _df_to_md(breakdown, index=False),
+        ]
+
+    parts += [
+        "", f"**{primary.id} — energy line items (with provenance):**", "",
+        _df_to_md(mass_energy.energy_line_items_table(primary), index=False),
+    ]
+
+    comp = mass_energy.metadata_completeness(primary)
+    parts += [
+        "",
+        f"_Metadata completeness for {primary.id}: {comp['complete']}/{comp['total']} "
+        f"line items have full provenance ({comp['incomplete']} incomplete). Every "
+        "value carries label / source_type / confidence / assumption_notes._",
+    ]
+    return "\n".join(parts)
+
+
 def _gate_status_md(vehicles: list[VehicleDefinition]) -> str:
     """Per-branch gate-status (governance metadata) for the vehicles' branches."""
     branches = load_branches()
@@ -205,7 +231,6 @@ def build_dossier(
     tmpl = (template_path or _TEMPLATE).read_text(encoding="utf-8")
     generated = generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
-    me_df = mass_energy.compare(vehicles)
     sim_results = sim.simulate_all(vehicles)
     tradeoff = dse.score_branches(vehicles)
     rank_df = tradeoff.ranking.to_frame()
@@ -233,7 +258,7 @@ def build_dossier(
         report_metadata=meta.banner(),
         disclaimer=DISCLAIMER,
         vehicle_definition=_vehicle_md(primary),
-        mass_energy=_df_to_md(me_df),
+        mass_energy=_mass_energy_md(vehicles, primary),
         simulation=_sim_md(sim_results),
         dynamics_screening=_dynamics_screening_md(vehicles),
         tradeoff=_df_to_md(rank_df),
