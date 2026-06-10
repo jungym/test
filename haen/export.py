@@ -364,6 +364,37 @@ def archive_release(
     return archive
 
 
+def validate_release_archive(archive_path: str | Path) -> list[str]:
+    """Validate a zipped internal release package; return problems ([] = OK).
+
+    Verifies the ``<archive>.sha256`` sidecar against the archive bytes, then
+    extracts to a temporary directory and runs the normal package validation.
+    """
+    import tempfile
+
+    archive = Path(archive_path)
+    if not archive.exists():
+        return [f"archive not found: {archive}"]
+    problems: list[str] = []
+
+    sidecar = archive.with_name(archive.name + ".sha256")
+    if sidecar.exists():
+        expected = sidecar.read_text(encoding="utf-8").strip().split()[0]
+        if sha256_bytes(archive.read_bytes()) != expected:
+            problems.append("archive hash mismatch vs sidecar")
+    else:
+        problems.append(f"archive hash sidecar missing: {sidecar.name}")
+
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            with zipfile.ZipFile(archive) as zf:
+                zf.extractall(tmp)
+            problems.extend(validate_release(tmp))
+    except zipfile.BadZipFile:
+        problems.append("not a valid zip archive")
+    return problems
+
+
 def validate_release(out_dir: str | Path) -> list[str]:
     """Validate an exported release package; return a list of problems ([] = OK).
 

@@ -245,11 +245,18 @@ def _cmd_release_candidate(args) -> int:
 
 
 def _cmd_validate(args) -> int:
-    from .export import validate_release
+    from .export import validate_release, validate_release_archive
 
-    problems = validate_release(args.dir)
+    target = args.path or args.dir
+    if not target:
+        print("error: provide a package directory or .zip archive (positional or --dir)")
+        return 2
+    if str(target).endswith(".zip"):
+        problems = validate_release_archive(target)
+    else:
+        problems = validate_release(target)
     if not problems:
-        print(f"OK — release package at {args.dir} is valid and internal-only")
+        print(f"OK — release package at {target} is valid and internal-only")
         return 0
     print(f"INVALID — {len(problems)} problem(s):")
     for p in problems:
@@ -286,8 +293,12 @@ def build_parser() -> argparse.ArgumentParser:
     pe.add_argument("--out", required=True, help="output directory for the internal package")
     pe.set_defaults(func=_cmd_export)
 
-    pv = sub.add_parser("validate", help="validate an exported internal review package")
-    pv.add_argument("--dir", required=True, help="package directory to validate")
+    pv = sub.add_parser(
+        "validate", help="validate an exported internal review package (dir or .zip)"
+    )
+    pv.add_argument("path", nargs="?", default=None,
+                    help="package directory or .zip archive")
+    pv.add_argument("--dir", default=None, help="package directory (legacy flag)")
     pv.set_defaults(func=_cmd_validate)
 
     prr = sub.add_parser("readiness", help="print the internal release-readiness checklist")
