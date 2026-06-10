@@ -152,3 +152,111 @@ def export_dossier(
         metadata=meta,
         image_paths=image_paths,
     )
+
+
+# --------------------------------------------------------------------------- #
+# Release package + manifest + validation (Item 7)
+# --------------------------------------------------------------------------- #
+@dataclass
+class ReleasePackage:
+    out_dir: Path
+    manifest_path: Path
+    files: dict[str, str] = field(default_factory=dict)
+    manifest: dict = field(default_factory=dict)
+
+
+def export_release_package(
+    dossier_text: str,
+    out_dir: str | Path,
+    *,
+    programme: str,
+    branch: str,
+    commit: str | None = None,
+    generated_at: str | None = None,
+    components: list[Component] | None = None,
+    vehicle: VehicleDefinition | None = None,
+    rfi_markdown: str | None = None,
+    metadata: ReportMetadata | None = None,
+) -> ReleasePackage:
+    """Build an internal-only review package with a checksummed manifest.
+
+    Writes the dossier (+ optional packaging SVGs), an optional ``rfi.md``, and a
+    ``manifest.json`` listing every file with its SHA-256 plus reproducibility
+    metadata. All content is governance-scanned before writing. Deterministic when
+    ``generated_at`` is fixed.
+    """
+    res = export_dossier(
+        dossier_text, out_dir, programme=programme, branch=branch, commit=commit,
+        generated_at=generated_at, metadata=metadata, components=components, vehicle=vehicle,
+    )
+    out = res.out_dir
+    files = dict(res.files)
+
+    if rfi_markdown is not None:
+        findings = check_text(rfi_markdown)
+        if findings:
+            raise ValueError(
+                f"refusing to export RFI with forbidden claim(s): "
+                f"{[f.matched_text for f in findings]}"
+            )
+        rfi_path = out / "rfi.md"
+        rfi_path.write_text(rfi_markdown, encoding="utf-8")
+        files["rfi.md"] = sha256_text(rfi_markdown)
+
+    manifest = {
+        "programme": programme,
+        "branch": branch,
+        "commit": commit,
+        "report_version": REPORT_VERSION,
+        "tool_version": __version__,
+        "generated_at": res.metadata["generated_at"],
+        "internal_only": True,
+        "human_review_required": True,
+        "external_release_allowed": False,
+        "files": dict(sorted(files.items())),
+    }
+    manifest_text = json.dumps(manifest, indent=2, sort_keys=True)
+    manifest_path = out / "manifest.json"
+    manifest_path.write_text(manifest_text, encoding="utf-8")
+
+    return ReleasePackage(out_dir=out, manifest_path=manifest_path, files=files, manifest=manifest)
+
+
+def validate_release(out_dir: str | Path) -> list[str]:
+    """Validate an exported release package; return a list of problems ([] = OK).
+
+    Checks: manifest present; every listed file exists with a matching checksum;
+    the dossier is governance-clean; and the package is marked internal-only,
+    human-review-required, and not externally releasable.
+    """
+    out = Path(out_dir)
+    problems: list[str] = []
+
+    manifest_path = out / "manifest.json"
+    if not manifest_path.exists():
+        return ["manifest.json missing"]
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+
+    for name, expected in manifest.get("files", {}).items():
+        fp = out / name
+        if not fp.exists():
+            problems.append(f"missing file: {name}")
+            continue
+        actual = sha256_text(fp.read_text(encoding="utf-8"))
+        if actual != expected:
+            problems.append(f"checksum mismatch: {name}")
+
+    dossier = out / "dossier.md"
+    if dossier.exists():
+        findings = check_text(dossier.read_text(encoding="utf-8"))
+        if findings:
+            problems.append(f"forbidden claim(s) in dossier: {[f.matched_text for f in findings]}")
+
+    if manifest.get("external_release_allowed") is not False:
+        problems.append("external_release_allowed must be false")
+    if manifest.get("human_review_required") is not True:
+        problems.append("human_review_required must be true")
+    if manifest.get("internal_only") is not True:
+        problems.append("internal_only must be true")
+
+    return problems

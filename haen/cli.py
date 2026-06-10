@@ -126,6 +126,52 @@ def _cmd_dossier(args) -> int:
     return 0
 
 
+def _cmd_export(args) -> int:
+    from .export import export_release_package, validate_release
+    from .report_builder import build_dossier
+    from .rfi_builder import build_rfi
+    from .sample_data import (
+        build_sample_components,
+        build_sample_evidence,
+        build_sample_fleet,
+        build_sample_ledger,
+    )
+
+    fleet = build_sample_fleet()
+    components = build_sample_components()
+    rfi = build_rfi(
+        title="GT-1 RFI", branch=args.branch,
+        ledger=build_sample_ledger(), evidence=build_sample_evidence(),
+        partners=None, vehicles=fleet,
+    )
+    text = build_dossier(
+        programme="HAEN GT-1", branch=args.branch, vehicles=fleet, components=components,
+    )
+    pkg = export_release_package(
+        text, args.out, programme="HAEN GT-1", branch=args.branch,
+        components=components, vehicle=fleet[0], rfi_markdown=rfi.to_markdown(),
+    )
+    print(f"Internal release package written to {pkg.out_dir}")
+    for name in sorted(pkg.files):
+        print(f"  {name}  {pkg.files[name][:12]}…")
+    problems = validate_release(pkg.out_dir)
+    print("Validation:", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
+    return 0 if not problems else 1
+
+
+def _cmd_validate(args) -> int:
+    from .export import validate_release
+
+    problems = validate_release(args.dir)
+    if not problems:
+        print(f"OK — release package at {args.dir} is valid and internal-only")
+        return 0
+    print(f"INVALID — {len(problems)} problem(s):")
+    for p in problems:
+        print(f"  - {p}")
+    return 1
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="haen", description=DISCLAIMER)
     p.add_argument("--version", action="version", version=f"haen {__version__}")
@@ -149,6 +195,15 @@ def build_parser() -> argparse.ArgumentParser:
     pd.add_argument("--branch", default="GT-1")
     pd.add_argument("--out", default=None)
     pd.set_defaults(func=_cmd_dossier)
+
+    pe = sub.add_parser("export", help="export an internal review package (dossier + images + manifest)")
+    pe.add_argument("--branch", default="GT-1")
+    pe.add_argument("--out", required=True, help="output directory for the internal package")
+    pe.set_defaults(func=_cmd_export)
+
+    pv = sub.add_parser("validate", help="validate an exported internal review package")
+    pv.add_argument("--dir", required=True, help="package directory to validate")
+    pv.set_defaults(func=_cmd_validate)
     return p
 
 
