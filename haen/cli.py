@@ -175,6 +175,75 @@ def _cmd_readiness(args) -> int:
     return 0
 
 
+def _cmd_release_candidate(args) -> int:
+    """Build the full internal release candidate package (internal-only).
+
+    Reuses the canonical reproducibility mechanism in haen.export: passing
+    --generated-at enables reproducible mode (fixed timestamp, PNGs suppressed,
+    byte-stable package + archive). No external action of any kind.
+    """
+    from . import mass_energy
+    from .export import (
+        archive_release,
+        export_release_package,
+        validate_release,
+    )
+    from .governance import semantic_risk_scan
+    from .report_builder import (
+        build_dossier,
+        build_release_readiness,
+        release_readiness_md,
+    )
+    from .rfi_builder import build_rfi
+    from .sample_data import (
+        build_sample_components,
+        build_sample_evidence,
+        build_sample_fleet,
+        build_sample_ledger,
+        build_sample_partners,
+    )
+
+    generated = args.generated_at
+    reproducible = generated is not None
+
+    fleet = build_sample_fleet()
+    components = build_sample_components()
+    rfi = build_rfi(
+        title="GT-1 programme RFI", branch=args.branch,
+        ledger=build_sample_ledger(), evidence=build_sample_evidence(),
+        partners=build_sample_partners(), vehicles=fleet,
+    )
+    text = build_dossier(
+        programme="HAEN GT-1", branch=args.branch, vehicles=fleet,
+        components=components, generated_at=generated,
+    )
+    pkg = export_release_package(
+        text, args.out, programme="HAEN GT-1", branch=args.branch,
+        generated_at=generated, components=components, vehicle=fleet[0],
+        rfi_markdown=rfi.to_markdown(), reproducible=reproducible,
+    )
+
+    problems = validate_release(pkg.out_dir)
+    dossier_text = pkg.out_dir.joinpath("dossier.md").read_text(encoding="utf-8")
+    checklist = build_release_readiness(
+        dossier_text=dossier_text,
+        validation_problems=problems,
+        semantic_findings=len(semantic_risk_scan(dossier_text)),
+        completeness=mass_energy.metadata_completeness(fleet[0]),
+    )
+    (pkg.out_dir / "readiness.md").write_text(
+        release_readiness_md(checklist), encoding="utf-8"
+    )
+    archive = archive_release(pkg.out_dir, generated_at=generated)
+
+    print(f"Internal release candidate written to {pkg.out_dir}")
+    print(f"  reproducible: {reproducible}")
+    print(f"  archive: {archive.name} (+ {archive.name}.sha256 sidecar)")
+    print("  validation:", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
+    print("  [INTERNAL ONLY — human review required; external release not allowed]")
+    return 0 if not problems else 1
+
+
 def _cmd_validate(args) -> int:
     from .export import validate_release
 
@@ -224,6 +293,18 @@ def build_parser() -> argparse.ArgumentParser:
     prr = sub.add_parser("readiness", help="print the internal release-readiness checklist")
     prr.add_argument("--branch", default="GT-1")
     prr.set_defaults(func=_cmd_readiness)
+
+    prc = sub.add_parser(
+        "release-candidate",
+        help="build the full internal release-candidate package (internal-only)",
+    )
+    prc.add_argument("--out", required=True, help="output directory for the internal package")
+    prc.add_argument("--branch", default="GT-1")
+    prc.add_argument(
+        "--generated-at", default=None,
+        help="fixed ISO timestamp; enables reproducible mode (shared export mechanism)",
+    )
+    prc.set_defaults(func=_cmd_release_candidate)
     return p
 
 
