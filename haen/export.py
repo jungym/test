@@ -31,6 +31,11 @@ def sha256_text(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
+def sha256_bytes(data: bytes) -> str:
+    """Deterministic SHA-256 of raw bytes."""
+    return hashlib.sha256(data).hexdigest()
+
+
 @dataclass
 class ExportResult:
     out_dir: Path
@@ -128,6 +133,7 @@ def export_dossier(
     metadata: ReportMetadata | None = None,
     components: list[Component] | None = None,
     vehicle: VehicleDefinition | None = None,
+    prefer_png: bool = True,
 ) -> ExportResult:
     """Export ``dossier_text`` to ``out_dir`` as an internal artifact.
 
@@ -135,7 +141,8 @@ def export_dossier(
     supplied, also writes deterministic SVG packaging diagrams and embeds image
     references in the exported dossier. Refuses (raises ``ValueError``) if the
     dossier contains any forbidden claim — nothing is written in that case. Pass
-    ``generated_at`` (ISO string) for reproducible output.
+    ``generated_at`` (ISO string) for reproducible output; set
+    ``prefer_png=False`` to suppress the optional non-deterministic PNG renders.
     """
     meta_obj = metadata or ReportMetadata(programme=programme)
     out = Path(out_dir)
@@ -145,7 +152,7 @@ def export_dossier(
     png_artifacts: list[str] = []          # optional convenience renders (not hashed)
     final_text = dossier_text
     if components:
-        image_index = export_packaging_images(components, vehicle, out)
+        image_index = export_packaging_images(components, vehicle, out, prefer_png=prefer_png)
         image_paths = {v: f["svg"] for v, f in image_index.items()}
         png_artifacts = sorted(f["png"].name for f in image_index.values() if f["png"])
         final_text = dossier_text + "\n" + _image_reference_block(image_index)
@@ -222,17 +229,25 @@ def export_release_package(
     vehicle: VehicleDefinition | None = None,
     rfi_markdown: str | None = None,
     metadata: ReportMetadata | None = None,
+    reproducible: bool = False,
 ) -> ReleasePackage:
     """Build an internal-only review package with a checksummed manifest.
 
     Writes the dossier (+ optional packaging SVGs), an optional ``rfi.md``, and a
     ``manifest.json`` listing every file with its SHA-256 plus reproducibility
-    metadata. All content is governance-scanned before writing. Deterministic when
-    ``generated_at`` is fixed.
+    metadata. All content is governance-scanned before writing.
+
+    Reproducibility mode (``reproducible=True``, the canonical mechanism shared by
+    the ``release-candidate`` CLI): requires a fixed ``generated_at``, suppresses
+    the optional non-deterministic PNG renders (SVG/text remain the deterministic
+    baseline), and yields a byte-stable package.
     """
+    if reproducible and not generated_at:
+        raise ValueError("reproducible mode requires a fixed generated_at")
     res = export_dossier(
         dossier_text, out_dir, programme=programme, branch=branch, commit=commit,
         generated_at=generated_at, metadata=metadata, components=components, vehicle=vehicle,
+        prefer_png=not reproducible,
     )
     out = res.out_dir
     files = dict(res.files)
@@ -259,9 +274,23 @@ def export_release_package(
         "human_review_required": True,
         "external_release_allowed": False,
         "files": dict(sorted(files.items())),
+        # Addendum §3 determinism distinction. The hashed `files` map covers only
+        # deterministic text artifacts; PNGs are optional non-deterministic
+        # convenience renders and are never hashed. The archive hash lives in a
+        # sidecar OUTSIDE the archive (addendum §2 — no circular hashing).
+        "reproducible": reproducible,
+        "deterministic_core_artifacts": sorted(files),
+        "optional_non_deterministic_artifacts": list(res.metadata.get("png_artifacts", [])),
+        "archive_determinism_status": "deterministic" if reproducible else "non_deterministic",
+        # Naming convention only (location-independent so the manifest stays
+        # byte-stable): the archive hash sidecar is written as <archive>.sha256
+        # next to the archive, outside it.
+        "archive_hash_sidecar": "<archive>.zip.sha256",
     }
     # Bundle integrity hash over the sorted (filename -> checksum) mapping. This
-    # detects tampering with the manifest's file list/checksums as a whole.
+    # detects tampering with the manifest's file list/checksums as a whole. It
+    # hashes the artifact map only — NOT any archive containing this manifest —
+    # so it is non-circular (addendum §2).
     manifest["bundle_sha256"] = sha256_text(
         json.dumps(manifest["files"], sort_keys=True)
     )
@@ -288,30 +317,50 @@ def write_validation_report(out_dir: str | Path) -> Path:
     return path
 
 
+def _zip_datetime(generated_at: str | None) -> tuple[int, int, int, int, int, int]:
+    """Normalize ``generated_at`` (ISO) to a ZipInfo date_time; fixed fallback."""
+    if generated_at:
+        try:
+            dt = datetime.fromisoformat(generated_at.replace("Z", "+00:00"))
+            if dt.year >= 1980:
+                return (dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second)
+        except ValueError:
+            pass
+    return (1980, 1, 1, 0, 0, 0)
+
+
 def archive_release(
     out_dir: str | Path,
     archive_path: str | Path | None = None,
     *,
     include_validation: bool = True,
+    generated_at: str | None = None,
 ) -> Path:
     """Bundle an internal release package into a single zip (stdlib only).
 
-    Files are added in sorted order with a fixed timestamp so the archive's
-    layout is reproducible. Internal-only; nothing here approves external release.
-    Returns the archive path.
+    Entries are added in lexicographic order with timestamps normalized to the
+    fixed ``generated_at`` (fallback: a constant epoch) and stable permissions/
+    compression, per addendum §3. The archive's SHA-256 is written to a sidecar
+    file ``<archive>.sha256`` OUTSIDE the archive (addendum §2 — the archive hash
+    never lives inside a manifest the archive contains). Internal-only; nothing
+    here approves external release. Returns the archive path.
     """
     out = Path(out_dir)
     if include_validation:
         write_validation_report(out)
     archive = Path(archive_path) if archive_path else out.with_suffix(".zip")
+    stamp = _zip_datetime(generated_at)
 
     names = sorted(p.name for p in out.iterdir() if p.is_file())
     with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
         for name in names:
-            info = zipfile.ZipInfo(filename=name, date_time=(1980, 1, 1, 0, 0, 0))
+            info = zipfile.ZipInfo(filename=name, date_time=stamp)
             info.compress_type = zipfile.ZIP_DEFLATED
             info.external_attr = 0o644 << 16
             zf.writestr(info, (out / name).read_bytes())
+
+    sidecar = archive.with_name(archive.name + ".sha256")
+    sidecar.write_text(sha256_bytes(archive.read_bytes()) + "\n", encoding="utf-8")
     return archive
 
 
