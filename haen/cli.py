@@ -81,7 +81,12 @@ def _cmd_check(args) -> int:
 
 def _cmd_rfi(args) -> int:
     from .rfi_builder import build_rfi
-    from .sample_data import build_sample_evidence, build_sample_ledger, build_sample_partners
+    from .sample_data import (
+        build_sample_evidence,
+        build_sample_fleet,
+        build_sample_ledger,
+        build_sample_partners,
+    )
 
     rfi = build_rfi(
         title="GT-1 programme — sample RFI",
@@ -90,6 +95,7 @@ def _cmd_rfi(args) -> int:
         evidence=build_sample_evidence(),
         expected_components=["Battery pack", "700 bar H2 tanks", "Fuel-cell stack", "Brakes"],
         partners=build_sample_partners(),
+        vehicles=build_sample_fleet(),  # includes metadata-completeness prompts
     )
     print(rfi.to_markdown())
     return 0
