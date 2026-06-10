@@ -282,3 +282,80 @@ def save_dossier(text: str, path: str | Path) -> Path:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(text, encoding="utf-8")
     return out
+
+
+# --------------------------------------------------------------------------- #
+# Internal release-readiness checklist (Review Gate 5, Item 9)
+# --------------------------------------------------------------------------- #
+_DEFAULT_GATES = {
+    "gate_1": "closed",
+    "gate_2": "intact",
+    "gate_3": "closed",
+    "gate_4": "closed",
+    "gate_5": "in_progress",
+}
+
+
+def build_release_readiness(
+    *,
+    gates: dict[str, str] | None = None,
+    dossier_text: str | None = None,
+    validation_problems: list[str] | None = None,
+    ci_status: str = "recorded-externally",
+    metadata: ReportMetadata | None = None,
+) -> dict:
+    """Build an internal release-readiness checklist (structured).
+
+    "Readiness" means review-gate/process state only — **never** an engineering,
+    certification, production, or external-release claim. Defaults are internal-
+    only and human-review-required.
+    """
+    meta = metadata or ReportMetadata()
+    forbidden = [f.matched_text for f in check_text(dossier_text)] if dossier_text else []
+    if validation_problems is None:
+        artifact_validation = "not_run"
+    elif not validation_problems:
+        artifact_validation = "ok"
+    else:
+        artifact_validation = f"{len(validation_problems)} problem(s)"
+    return {
+        "gates": dict(gates or _DEFAULT_GATES),
+        "ci_status": ci_status,
+        "artifact_validation": artifact_validation,
+        "forbidden_claim_status": "clean" if not forbidden else f"{len(forbidden)} finding(s)",
+        "human_review_required": meta.human_review_required,
+        "external_release_allowed": meta.external_release_allowed,
+        "internal_only": meta.internal_only,
+        "notes": ["SafeCopy base untouched", "PR not opened"],
+    }
+
+
+def release_readiness_md(checklist: dict) -> str:
+    """Render the readiness checklist as governance-clean internal Markdown."""
+    lines = [
+        "# Internal Release-Readiness Checklist (INTERNAL)",
+        "",
+        "_Review-gate/process status only — not an engineering, certification, "
+        "production, supplier, or external-release claim. Human review required._",
+        "",
+        "## Gates",
+    ]
+    for gate, status in checklist["gates"].items():
+        lines.append(f"- {gate}: **{status}**")
+    lines += [
+        "",
+        "## Controls",
+        f"- CI status: **{checklist['ci_status']}**",
+        f"- Artifact validation: **{checklist['artifact_validation']}**",
+        f"- Forbidden-claim status: **{checklist['forbidden_claim_status']}**",
+        f"- human_review_required: **{str(checklist['human_review_required']).lower()}**",
+        f"- external_release_allowed: **{str(checklist['external_release_allowed']).lower()}**",
+        f"- internal_only: **{str(checklist['internal_only']).lower()}**",
+        "",
+        "## Notes",
+    ]
+    lines += [f"- {n}" for n in checklist["notes"]]
+    lines.append("")
+    text = "\n".join(lines)
+    assert_clean(text)  # governance gate
+    return text

@@ -165,6 +165,16 @@ def _cmd_export(args) -> int:
     return 0 if not problems else 1
 
 
+def _cmd_readiness(args) -> int:
+    from .report_builder import build_dossier, build_release_readiness, release_readiness_md
+    from .sample_data import build_sample_fleet
+
+    text = build_dossier(programme="HAEN GT-1", branch=args.branch, vehicles=build_sample_fleet())
+    checklist = build_release_readiness(dossier_text=text)
+    print(release_readiness_md(checklist))
+    return 0
+
+
 def _cmd_validate(args) -> int:
     from .export import validate_release
 
@@ -210,6 +220,10 @@ def build_parser() -> argparse.ArgumentParser:
     pv = sub.add_parser("validate", help="validate an exported internal review package")
     pv.add_argument("--dir", required=True, help="package directory to validate")
     pv.set_defaults(func=_cmd_validate)
+
+    prr = sub.add_parser("readiness", help="print the internal release-readiness checklist")
+    prr.add_argument("--branch", default="GT-1")
+    prr.set_defaults(func=_cmd_readiness)
     return p
 
 
