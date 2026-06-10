@@ -131,6 +131,58 @@ class ForbiddenClaimError(ValueError):
 
 
 # --------------------------------------------------------------------------- #
+# Safe-section mechanism for repository documentation (Gate 6 addendum §4)
+# --------------------------------------------------------------------------- #
+# Repository docs under docs/ may quote verbatim forbidden-claim *examples*
+# inside explicitly marked safe sections (e.g. a Korean governance reference).
+# Safe sections are ONLY honoured for repository documentation: generated
+# artifacts (dossier/readiness/RFI/reports) must never contain these markers,
+# and the hard gate on generated prose is unchanged.
+SAFE_SECTION_START = "<!-- claim-safe-section:start -->"
+SAFE_SECTION_END = "<!-- claim-safe-section:end -->"
+
+# Marker phrases that indicate a prohibition-list/safe-section context. These
+# must never appear in generated artifacts (addendum §4).
+SAFE_SECTION_MARKER_PHRASES = (
+    SAFE_SECTION_START,
+    SAFE_SECTION_END,
+    "Prohibited claim categories",
+    "Forbidden wording examples",
+    "Unsafe wording categories",
+    "Claim-risk examples for scanner tests",
+)
+
+_SAFE_SECTION_RE = re.compile(
+    re.escape(SAFE_SECTION_START) + r".*?" + re.escape(SAFE_SECTION_END),
+    re.DOTALL,
+)
+
+
+def strip_safe_sections(text: str) -> str:
+    """Remove marked safe sections (docs-only mechanism)."""
+    return _SAFE_SECTION_RE.sub("", text)
+
+
+def check_doc_text(text: str, *, allow_safe_sections: bool = False) -> list[ClaimFinding]:
+    """Forbidden-claim scan for repository documentation.
+
+    With ``allow_safe_sections=True`` (valid ONLY for files under ``docs/``),
+    marked safe sections are excluded before scanning so a governance reference
+    may quote forbidden-claim examples verbatim. Generated artifacts must use
+    :func:`check_text` / :func:`assert_clean` directly and must contain no safe
+    -section markers at all.
+    """
+    if allow_safe_sections:
+        text = strip_safe_sections(text)
+    return check_text(text)
+
+
+def contains_safe_section_markers(text: str) -> bool:
+    """True if ``text`` contains any safe-section marker (forbidden in artifacts)."""
+    return any(marker in text for marker in SAFE_SECTION_MARKER_PHRASES)
+
+
+# --------------------------------------------------------------------------- #
 # Advisory semantic claim-risk layer (Review Gate 5, Item 7)
 # --------------------------------------------------------------------------- #
 # This layer is ADVISORY only. It surfaces phrasings that *resemble* a strong

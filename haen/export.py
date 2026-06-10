@@ -19,7 +19,7 @@ from pathlib import Path
 
 from . import __version__
 from . import visualization as viz
-from .governance import ReportMetadata, check_text
+from .governance import ReportMetadata, check_text, contains_safe_section_markers
 from .packaging import Component
 from .vehicle_definition import VehicleDefinition
 
@@ -164,6 +164,10 @@ def export_dossier(
             f"refusing to export dossier with forbidden claim(s): "
             f"{[f.matched_text for f in findings]}"
         )
+    # Safe sections are a docs-only mechanism; generated artifacts must not
+    # carry safe-section markers (Gate 6 addendum §4).
+    if contains_safe_section_markers(final_text):
+        raise ValueError("refusing to export dossier containing safe-section markers")
 
     dossier_path = out / "dossier.md"
     dossier_path.write_text(final_text, encoding="utf-8")
