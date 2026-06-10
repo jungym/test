@@ -1,5 +1,8 @@
 # Review Gate 6 — Proposed Scope (PROPOSAL ONLY — not implemented)
 
+**`GATE_6_EXECUTION_ADDENDUM.md` takes precedence for the execution-clarification
+points it covers.**
+
 **Status: DRAFT PROPOSAL.** Nothing here is implemented. It scopes the next safe
 expansion for approval; implementation begins only on explicit instruction.
 
