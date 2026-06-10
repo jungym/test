@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -269,6 +270,49 @@ def export_release_package(
     manifest_path.write_text(manifest_text, encoding="utf-8")
 
     return ReleasePackage(out_dir=out, manifest_path=manifest_path, files=files, manifest=manifest)
+
+
+def write_validation_report(out_dir: str | Path) -> Path:
+    """Run validation and write an internal-only validation_report.json."""
+    out = Path(out_dir)
+    problems = validate_release(out)
+    report = {
+        "valid": not problems,
+        "problems": problems,
+        "internal_only": True,
+        "human_review_required": True,
+        "external_release_allowed": False,
+    }
+    path = out / "validation_report.json"
+    path.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
+    return path
+
+
+def archive_release(
+    out_dir: str | Path,
+    archive_path: str | Path | None = None,
+    *,
+    include_validation: bool = True,
+) -> Path:
+    """Bundle an internal release package into a single zip (stdlib only).
+
+    Files are added in sorted order with a fixed timestamp so the archive's
+    layout is reproducible. Internal-only; nothing here approves external release.
+    Returns the archive path.
+    """
+    out = Path(out_dir)
+    if include_validation:
+        write_validation_report(out)
+    archive = Path(archive_path) if archive_path else out.with_suffix(".zip")
+
+    names = sorted(p.name for p in out.iterdir() if p.is_file())
+    with zipfile.ZipFile(archive, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in names:
+            info = zipfile.ZipInfo(filename=name, date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            info.external_attr = 0o644 << 16
+            zf.writestr(info, (out / name).read_bytes())
+    return archive
 
 
 def validate_release(out_dir: str | Path) -> list[str]:
