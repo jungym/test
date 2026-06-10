@@ -292,6 +292,46 @@ def diagram_to_svg(diagram: PackagingDiagram, *, px_per_mm: float = 0.15, paddin
     return "\n".join(parts)
 
 
+def render_diagram_png(diagram: PackagingDiagram, path, *, px_per_mm: float = 0.15) -> bool:
+    """Render a :class:`PackagingDiagram` to a PNG via matplotlib (Agg).
+
+    Optional convenience artifact. Returns ``True`` on success, ``False`` if
+    matplotlib is unavailable or rendering fails (the caller falls back to the
+    dependency-free SVG). Internal-only, low-fidelity; not CAD or validation.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")  # headless
+        import matplotlib.pyplot as plt
+        from matplotlib.patches import Rectangle
+    except Exception:
+        return False
+
+    try:
+        rects = list(diagram.rects)
+        fig, ax = plt.subplots(figsize=(8, 5))
+        for r in rects:
+            ax.add_patch(
+                Rectangle(
+                    (r.x0, r.y0), r.x1 - r.x0, r.y1 - r.y0, fill=False,
+                    edgecolor="gray", linestyle="--" if r.kind == "envelope" else "-",
+                )
+            )
+            ax.text((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2, r.name, fontsize=7, ha="center")
+        for c in diagram.conflicts:
+            ax.add_patch(
+                Rectangle((c.x0, c.y0), c.x1 - c.x0, c.y1 - c.y0, color="red", alpha=0.3)
+            )
+        ax.set_title(f"Packaging {diagram.view} view (INTERNAL, low-fidelity AABB)")
+        ax.set_aspect("equal")
+        ax.autoscale()
+        fig.savefig(path)
+        plt.close(fig)
+        return True
+    except Exception:
+        return False
+
+
 def mass_breakdown_pie_mpl(breakdown: pd.DataFrame):
     """Matplotlib pie of mass groups for static report embedding.
 

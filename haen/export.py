@@ -63,18 +63,54 @@ def export_packaging_svgs(
     return written
 
 
-def _image_reference_block(image_files: dict[str, Path]) -> str:
+def export_packaging_images(
+    components: list[Component],
+    vehicle: VehicleDefinition | None,
+    out_dir: str | Path,
+    *,
+    prefer_png: bool = True,
+) -> dict[str, dict[str, Path]]:
+    """Write SVG packaging diagrams (always) and optional PNGs (if matplotlib).
+
+    Returns ``{view: {"svg": Path, "png": Path|None}}``. SVG is the
+    dependency-free baseline; PNG is an optional convenience artifact and is
+    omitted gracefully when the renderer is unavailable.
+    """
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    index: dict[str, dict[str, Path]] = {}
+    for view in ("top", "side"):
+        diagram = viz.packaging_diagram(components, vehicle, view=view)
+        svg_path = out / f"packaging_{view}.svg"
+        svg_path.write_text(viz.diagram_to_svg(diagram), encoding="utf-8")
+        png_path: Path | None = None
+        if prefer_png:
+            candidate = out / f"packaging_{view}.png"
+            if viz.render_diagram_png(diagram, candidate):
+                png_path = candidate
+        index[view] = {"svg": svg_path, "png": png_path}
+    return index
+
+
+def _image_reference_block(image_index: dict[str, dict[str, Path]]) -> str:
     lines = [
         "",
         "## Packaging diagrams (internal — concept visualization, low-fidelity)",
         "",
-        "_Generated SVG concept diagrams (axis-aligned bounding boxes). Not CAD, "
+        "_Generated concept diagrams (axis-aligned bounding boxes). SVG is the "
+        "dependency-free baseline; PNG is an optional convenience render. Not CAD, "
         "and not geometric or packaging validation._",
         "",
     ]
-    for view, path in image_files.items():
-        lines.append(f"- {view} view: `{path.name}`")
-        lines.append(f"  ![packaging {view} view]({path.name})")
+    for view, fmts in image_index.items():
+        svg = fmts.get("svg")
+        if svg is not None:
+            lines.append(f"- {view} view (svg): `{svg.name}`")
+            lines.append(f"  ![packaging {view} view (svg)]({svg.name})")
+        png = fmts.get("png")
+        if png is not None:
+            lines.append(f"- {view} view (png): `{png.name}`")
+            lines.append(f"  ![packaging {view} view (png)]({png.name})")
     lines.append("")
     return "\n".join(lines)
 
@@ -104,11 +140,14 @@ def export_dossier(
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 
-    image_paths: dict[str, Path] = {}
+    image_paths: dict[str, Path] = {}      # view -> svg path (hashed baseline)
+    png_artifacts: list[str] = []          # optional convenience renders (not hashed)
     final_text = dossier_text
     if components:
-        image_paths = export_packaging_svgs(components, vehicle, out)
-        final_text = dossier_text + "\n" + _image_reference_block(image_paths)
+        image_index = export_packaging_images(components, vehicle, out)
+        image_paths = {v: f["svg"] for v, f in image_index.items()}
+        png_artifacts = sorted(f["png"].name for f in image_index.values() if f["png"])
+        final_text = dossier_text + "\n" + _image_reference_block(image_index)
 
     # Governance gate runs on the FINAL text (including any embedded references).
     findings = check_text(final_text)
@@ -134,7 +173,12 @@ def export_dossier(
         "internal_only": meta_obj.internal_only,
         "classification": meta_obj.classification,
         "dossier_sha256": dossier_sha,
+        # PNGs are optional, possibly non-deterministic convenience artifacts;
+        # they are recorded by name but excluded from the hashed manifest.
+        "png_rendered": bool(png_artifacts),
+        "png_artifacts": png_artifacts,
     }
+    # SVG baseline is deterministic and IS hashed; PNGs are intentionally not.
     files = {dossier_path.name: dossier_sha}
     for view, path in image_paths.items():
         files[path.name] = sha256_text(path.read_text(encoding="utf-8"))
