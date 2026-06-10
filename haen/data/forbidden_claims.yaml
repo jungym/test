@@ -20,6 +20,8 @@ forbidden_claims:
       - "legal for (?:the )?road"
       - "도로[\\s]*주행[\\s]*합법"
       - "공도[\\s]*(?:주행[\\s]*)?합법"
+      - "도로[\\s]*(?:주행|운행)[\\s]*가능[\\s]*인증"
+      - "합법[\\s]*주행"
 
   - id: FC-002
     label: homologation ready
@@ -31,7 +33,7 @@ forbidden_claims:
       - "ready for homologation"
       - "fully homologated"
       - "homologation[\\s-]?complete\\b"
-      - "형식[\\s]*승인[\\s]*(?:완료|취득|준비[\\s]*완료)"
+      - "형식[\\s]*(?:승인|인증)[\\s]*(?:완료|취득|준비[\\s]*완료)"
 
   - id: FC-003
     label: crash safe
@@ -45,6 +47,7 @@ forbidden_claims:
       - "crashworthiness (?:confirmed|proven|guaranteed)"
       - "safe in (?:a )?crash"
       - "충돌[\\s]*안전성?[\\s]*(?:확보|보장|입증|완료)"
+      - "충돌[\\s]*안전성?[\\s]*검증[\\s]*완료"
 
   - id: FC-004
     label: production feasible
@@ -59,6 +62,7 @@ forbidden_claims:
       - "feasible for (?:mass )?production"
       - "양산[\\s]*(?:가능|확정|준비[\\s]*완료)"
       - "상용화[\\s]*(?:가능|확정)"
+      - "대량[\\s]*생산[\\s]*(?:가능|확정)"
 
   - id: FC-005
     label: supplier confirmed
@@ -73,6 +77,7 @@ forbidden_claims:
       - "supplier[\\s-]?secured"
       - "공급(?:사|처|업체)[\\s]*(?:확정|확보|확인[\\s]*완료)"
       - "협력사[\\s]*(?:확정|확보)"
+      - "(?:공급|납품)[\\s]*확정"
 
   - id: FC-006
     label: design complete
@@ -86,6 +91,7 @@ forbidden_claims:
       - "fully (?:designed|engineered)"
       - "설계[\\s]*(?:완료|확정)"
       - "최종[\\s]*설계"
+      - "디자인[\\s]*(?:완료|확정)"
 
   - id: FC-007
     label: certification ready
@@ -99,7 +105,8 @@ forbidden_claims:
       - "fully certified\\b"
       - "type[\\s-]?approved\\b"
       - "certified for (?:road|production|use|sale)"
-      - "인증[\\s]*(?:완료|취득|준비[\\s]*완료)"
+      - "인증[\\s]*(?:완료|취득|획득|준비[\\s]*완료)"
+      - "승인[\\s]*완료"
 
   - id: FC-008
     label: CFD validated
@@ -113,6 +120,7 @@ forbidden_claims:
       - "validated (?:by|via|with|using|through) CFD"
       - "aero(?:dynamics)?[\\s-]?(?:validated|confirmed) (?:by|via|with) CFD"
       - "CFD[\\s]*검증[\\s]*완료"
+      - "(?:전산[\\s]*유체[\\s]*해석|공력)[\\s]*검증[\\s]*완료"
 
   - id: FC-009
     label: crash simulation complete
@@ -124,6 +132,7 @@ forbidden_claims:
       - "crash[\\s-]?sim(?:ulation)?[\\s-]?(?:complete|completed|validated|passed|done)\\b"
       - "crash[\\s-]?(?:analysis|test)[\\s-]?(?:complete|completed|passed|validated)\\b"
       - "충돌[\\s]*(?:해석|시뮬레이션|시험)[\\s]*완료"
+      - "충돌[\\s]*시험[\\s]*통과"
 
   - id: FC-010
     label: digital twin complete
@@ -133,4 +142,4 @@ forbidden_claims:
     patterns:
       - "digital[\\s-]?twin[\\s-]?(?:complete|completed|validated|ready|done)\\b"
       - "(?<!not )(?<!not a )(?:fully )?(?:validated|completed) digital[\\s-]?twin\\b"
-      - "디지털[\\s]*트윈[\\s]*(?:완료|구축[\\s]*완료|검증[\\s]*완료)"
+      - "디지털[\\s]*트윈[\\s]*(?:완료|구축[\\s]*완료|검증[\\s]*완료|검증)"
