@@ -71,9 +71,10 @@ def build_rfi(
     evidence: SupplierEvidenceTable | None = None,
     expected_components: list[str] | None = None,
     partners: list["Partner"] | None = None,
+    vehicles: list["VehicleDefinition"] | None = None,
     recipient: str = "TBD",
 ) -> RFI:
-    """Assemble an RFI from open assumptions, evidence gaps and RFI-candidate partners.
+    """Assemble an RFI from open assumptions, evidence gaps, partners and metadata gaps.
 
     - Each open, low-confidence assumption becomes a high-priority RFI item.
     - Each unverified evidence record becomes a medium-priority item.
@@ -81,6 +82,8 @@ def build_rfi(
     - Each RFI-candidate partner becomes a partner-directed RFI item. Partners
       that are watch-branch or technology-observation are intentionally NOT
       contacted (no item generated).
+    - Each mass/energy line item with incomplete provenance metadata becomes a
+      low-priority internal RFI prompt (fill in source/confidence/notes).
     """
     items: list[RFIItem] = []
     counter = 1
@@ -162,5 +165,35 @@ def build_rfi(
                 )
             )
             counter += 1
+
+    if vehicles:
+        from . import mass_energy  # local import avoids any import-order concerns
+
+        for v in vehicles:
+            line_items = list(v.mass_breakdown) + mass_energy.energy_line_items(v)
+            for it in line_items:
+                if it.metadata_complete():
+                    continue
+                missing = [
+                    fld for fld, val in (
+                        ("unit", it.unit),
+                        ("source_type", it.source_type),
+                        ("assumption_notes", it.assumption_notes),
+                    ) if not val
+                ]
+                items.append(
+                    RFIItem(
+                        ref=f"M-{counter:03d}",
+                        topic=f"{v.id}:{it.name}",
+                        question=(
+                            f"Provide missing provenance metadata "
+                            f"({', '.join(missing) or 'source/confidence'}) for "
+                            f"'{it.name}' (value {it.value} {it.unit or '?'})."
+                        ),
+                        rationale="Incomplete provenance metadata on a line item.",
+                        priority="low",
+                    )
+                )
+                counter += 1
 
     return RFI(title=title, branch=branch, items=items, recipient=recipient)
