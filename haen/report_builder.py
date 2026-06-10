@@ -189,17 +189,21 @@ def build_dossier(
     rfi: RFI | None = None,
     components: list[Component] | None = None,
     metadata: ReportMetadata | None = None,
+    generated_at: str | None = None,
     template_path: Path | None = None,
 ) -> str:
     """Build the entry validation dossier as Markdown.
 
     The dossier is INTERNAL and human-review-required by default (see
-    ``metadata``). Raises :class:`~haen.governance.ForbiddenClaimError` if the
-    assembled text contains any forbidden claim (it should not, by construction).
+    ``metadata``). Pass ``generated_at`` (a pre-formatted timestamp string) for
+    reproducible/deterministic output. Raises
+    :class:`~haen.governance.ForbiddenClaimError` if the assembled text contains
+    any forbidden claim (it should not, by construction).
     """
     primary = primary_vehicle or vehicles[0]
     meta = metadata or ReportMetadata(programme=programme)
     tmpl = (template_path or _TEMPLATE).read_text(encoding="utf-8")
+    generated = generated_at or datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
 
     me_df = mass_energy.compare(vehicles)
     sim_results = sim.simulate_all(vehicles)
@@ -224,7 +228,7 @@ def build_dossier(
 
     text = tmpl.format(
         programme=programme,
-        generated=datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        generated=generated,
         branch=branch,
         report_metadata=meta.banner(),
         disclaimer=DISCLAIMER,
