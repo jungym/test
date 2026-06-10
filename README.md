@@ -55,6 +55,8 @@ haen simulate                  # low-fidelity performance estimates
 haen screen                    # braking + load-transfer dynamics screening
 haen rfi --branch GT-1H        # generate an RFI from open gaps (incl. partners)
 haen dossier --branch GT-1 --out out/dossier.md
+haen export --branch GT-1 --out out/pkg   # internal review package (dossier+images+manifest)
+haen validate --dir out/pkg               # validate an exported internal package
 haen check path/to/text.md     # forbidden-claim check
 
 # Dashboard

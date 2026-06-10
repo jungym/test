@@ -1,7 +1,25 @@
 # Review Gate 4 — Proposed Scope (PROPOSAL ONLY — not implemented)
 
-**Status: DRAFT PROPOSAL.** Nothing here is implemented. It scopes the next safe
-expansion for approval; implementation begins only on explicit instruction.
+**Status: IMPLEMENTED.** Originally a proposal; the items below are now
+implemented on `haen-standalone-extraction`.
+
+> **Implementation status:**
+> - Item 1 baseline verify — done.
+> - Item 2 dossier artifact export — done (`haen/export.py`, `tests/test_export.py`).
+> - Item 3 embedded packaging artifacts (dependency-free SVG) — done
+>   (`visualization.diagram_to_svg`, `export.export_packaging_svgs`,
+>   `tests/test_packaging_artifacts.py`).
+> - Item 4 mass/energy metadata reporting — done (`tests/test_metadata_reporting.py`).
+> - Item 5 dashboard energy charts — done (`visualization.energy_scenario_chart`).
+> - Item 6 metadata-completeness RFI prompts — done (`tests/test_metadata_rfi.py`).
+> - Item 7 release package + manifest + validation + reproducibility — done
+>   (`export.export_release_package`/`validate_release`, `haen export`/`validate`
+>   CLI, `tests/test_release_package.py`).
+> - Item 8 consolidation — this update.
+>
+> Exports are internal-only, human-review-required, governance-gated, and
+> deterministic under a fixed `generated_at`. No CAD/CFD/crash/thermal/FEA/
+> certification/production/supplier-confirmation/road-legality work.
 
 HAEN Hypercar Design Support AI is a human-reviewed AI-assisted concept
 engineering support system, not an autonomous vehicle design or certification

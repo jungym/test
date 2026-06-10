@@ -44,6 +44,11 @@ Every screening output carries `source_type`, `confidence`, and a `DataLabel`
   per-line-item mass/energy metadata labels, energy-scenario comparison,
   packaging visualization (top/side/conflict), packaging-to-report integration,
   dashboard expansion.
+- Gate 4 (Items 1–8): implemented (`docs/reviews/REVIEW_GATE_4_SCOPE.md`) —
+  internal dossier artifact export, dependency-free SVG packaging images,
+  mass/energy metadata reporting, dashboard energy charts, metadata-completeness
+  RFI prompts, release package + checksummed manifest + validation/reproducibility
+  (`haen export` / `haen validate`).
 
 ## Validation
 
