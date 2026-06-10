@@ -17,7 +17,13 @@ from . import DISCLAIMER
 from . import design_space_explorer as dse
 from . import low_fidelity_simulation as sim
 from . import mass_energy
-from .governance import AssumptionLedger, ReportMetadata, assert_clean, check_text
+from .governance import (
+    AssumptionLedger,
+    ReportMetadata,
+    assert_clean,
+    check_text,
+    semantic_risk_scan,
+)
 from .packaging import Component, check_envelope, detect_overlaps
 from .rfi_builder import RFI
 from .supplier_evidence import SupplierEvidenceTable
@@ -251,7 +257,7 @@ def build_dossier(
 
     packaging_md = _packaging_md(components, primary)
 
-    text = tmpl.format(
+    fields = dict(
         programme=programme,
         generated=generated,
         branch=branch,
@@ -269,7 +275,29 @@ def build_dossier(
         rfi=rfi_md,
     )
 
-    assert_clean(text)  # governance gate
+    # Advisory semantic-risk review (warning-only): scan a preliminary render of
+    # the dossier body, then surface the findings read-only. This never gates
+    # output — the hard lexical forbidden-claim check below stays authoritative.
+    preliminary = tmpl.format(semantic_risk="(pending)", **fields)
+    sem = semantic_risk_scan(preliminary)
+    if not sem:
+        semantic_md = (
+            "_No advisory semantic-risk findings. (Advisory layer only; the hard "
+            "forbidden-claim gate remains authoritative and is enforced below.)_"
+        )
+    else:
+        rows = "\n".join(
+            f"| {f.line} | {f.category} | {f.snippet.replace('|', '/')} |" for f in sem
+        )
+        semantic_md = (
+            f"{len(sem)} advisory finding(s) for human review (warning-only; "
+            "the hard forbidden-claim gate remains authoritative):\n\n"
+            "| Line | Category | Snippet |\n|------|----------|---------|\n" + rows
+        )
+
+    text = tmpl.format(semantic_risk=semantic_md, **fields)
+
+    assert_clean(text)  # governance gate (hard, authoritative)
     return text
 
 
@@ -301,6 +329,8 @@ def build_release_readiness(
     gates: dict[str, str] | None = None,
     dossier_text: str | None = None,
     validation_problems: list[str] | None = None,
+    semantic_findings: int | None = None,
+    completeness: dict[str, int] | None = None,
     ci_status: str = "recorded-externally",
     metadata: ReportMetadata | None = None,
 ) -> dict:
@@ -318,11 +348,28 @@ def build_release_readiness(
         artifact_validation = "ok"
     else:
         artifact_validation = f"{len(validation_problems)} problem(s)"
+    if semantic_findings is None and dossier_text is not None:
+        semantic_findings = len(semantic_risk_scan(dossier_text))
+    if semantic_findings is None:
+        semantic_status = "not_run"
+    elif semantic_findings == 0:
+        semantic_status = "none (advisory layer; hard gate authoritative)"
+    else:
+        semantic_status = f"{semantic_findings} advisory finding(s) for human review"
+    if completeness:
+        completeness_status = (
+            f"{completeness.get('complete', 0)}/{completeness.get('total', 0)} "
+            f"line items with full provenance"
+        )
+    else:
+        completeness_status = "not_run"
     return {
         "gates": dict(gates or _DEFAULT_GATES),
         "ci_status": ci_status,
         "artifact_validation": artifact_validation,
         "forbidden_claim_status": "clean" if not forbidden else f"{len(forbidden)} finding(s)",
+        "semantic_risk_status": semantic_status,
+        "metadata_completeness": completeness_status,
         "human_review_required": meta.human_review_required,
         "external_release_allowed": meta.external_release_allowed,
         "internal_only": meta.internal_only,
@@ -348,6 +395,8 @@ def release_readiness_md(checklist: dict) -> str:
         f"- CI status: **{checklist['ci_status']}**",
         f"- Artifact validation: **{checklist['artifact_validation']}**",
         f"- Forbidden-claim status: **{checklist['forbidden_claim_status']}**",
+        f"- Advisory semantic-risk: **{checklist['semantic_risk_status']}**",
+        f"- Metadata completeness: **{checklist['metadata_completeness']}**",
         f"- human_review_required: **{str(checklist['human_review_required']).lower()}**",
         f"- external_release_allowed: **{str(checklist['external_release_allowed']).lower()}**",
         f"- internal_only: **{str(checklist['internal_only']).lower()}**",
