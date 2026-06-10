@@ -1,7 +1,27 @@
 # Review Gate 5 — Proposed Scope (PROPOSAL ONLY — not implemented)
 
-**Status: DRAFT PROPOSAL.** Nothing here is implemented. It scopes the next safe
-expansion for approval; implementation begins only on explicit instruction.
+**Status: IMPLEMENTED.** Originally a proposal; Items 1–10 are now implemented on
+`haen-standalone-extraction`.
+
+> **Implementation status:**
+> - Item 1 baseline verify — done.
+> - Item 2 optional PNG rendering (matplotlib Agg, graceful; SVG baseline) — done
+>   (`test_png_rendering.py`).
+> - Item 3 per-line metadata in `compare_with_metadata()` — done
+>   (`test_compare_metadata.py`).
+> - Item 4 completeness-gap RFI prompts in default CLI RFI — done
+>   (`test_cli_rfi_completeness.py`).
+> - Item 5 bundle-hash artifact integrity — done (`test_artifact_integrity.py`).
+> - Item 6 stdlib zip release bundle + validation report — done
+>   (`test_release_bundle.py`).
+> - Item 7 advisory semantic claim-risk layer — done (`test_semantic_risk.py`).
+> - Item 8 expanded Korean coverage — done (`test_korean_claims.py`).
+> - Item 9 internal release-readiness checklist — done (`test_release_readiness.py`).
+> - Item 10 consolidation — this update.
+>
+> All artifacts internal-only, human-review-required, governance-gated. Semantic
+> layer is advisory and never weakens the hard lexical gate. No CAD/CFD/crash/
+> thermal/FEA/certification/production/supplier-confirmation/road-legality work.
 
 HAEN Hypercar Design Support AI is a human-reviewed AI-assisted concept
 engineering support system, not an autonomous vehicle design or certification

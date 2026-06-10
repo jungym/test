@@ -49,6 +49,11 @@ Every screening output carries `source_type`, `confidence`, and a `DataLabel`
   mass/energy metadata reporting, dashboard energy charts, metadata-completeness
   RFI prompts, release package + checksummed manifest + validation/reproducibility
   (`haen export` / `haen validate`).
+- Gate 5 (Items 1–10): implemented (`docs/reviews/REVIEW_GATE_5_SCOPE.md`) —
+  optional PNG rendering (SVG baseline), per-line metadata in compare, default
+  CLI completeness RFI prompts, bundle-hash integrity, stdlib zip release bundle,
+  advisory semantic claim-risk layer, expanded Korean coverage, internal
+  release-readiness checklist (`haen readiness`).
 
 ## Validation
 
