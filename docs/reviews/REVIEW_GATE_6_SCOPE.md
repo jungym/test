@@ -3,8 +3,29 @@
 **`GATE_6_EXECUTION_ADDENDUM.md` takes precedence for the execution-clarification
 points it covers.**
 
-**Status: DRAFT PROPOSAL.** Nothing here is implemented. It scopes the next safe
-expansion for approval; implementation begins only on explicit instruction.
+**Status: IMPLEMENTED.** Originally a proposal; Items 1–8 are now implemented on
+`haen-standalone-extraction` under the rules of the execution addendum.
+
+> **Implementation status:**
+> - Item 1 semantic-risk surfacing in dossier + readiness — done
+>   (`test_gate6_semantic_surfacing.py`).
+> - Item 2 deterministic raster evaluation — decision recorded in
+>   `GATE_6_STATUS.md`: PNG stays an optional non-hashed convenience;
+>   reproducible mode suppresses it; SVG/text are the deterministic baseline.
+> - Item 3 explicit reproducibility mode (canonical, shared) — done
+>   (`test_reproducibility_mode.py`).
+> - Item 4 `haen release-candidate` command reusing the shared mechanism — done
+>   (`test_release_candidate.py`).
+> - Item 5 end-to-end acceptance test — done (`test_e2e_acceptance.py`).
+> - Item 6 Korean governance documentation + safe-section mechanism — done
+>   (`docs/claim_governance_ko.md`, `test_safe_sections.py`).
+> - Item 7 archive validation UX (dir or .zip, sidecar verification) — done
+>   (`test_validate_archive.py`).
+> - Item 8 release-readiness consolidation — done (with Item 1).
+>
+> Addendum rules honoured: archive hash in a sidecar outside the archive (no
+> circular hashing); determinism fields in the manifest; safe sections docs-only
+> with marker-free generated artifacts; one shared reproducibility path.
 
 HAEN Hypercar Design Support AI is a human-reviewed AI-assisted concept
 engineering support system, not an autonomous vehicle design, certification,

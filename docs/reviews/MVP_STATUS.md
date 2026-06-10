@@ -54,6 +54,12 @@ Every screening output carries `source_type`, `confidence`, and a `DataLabel`
   CLI completeness RFI prompts, bundle-hash integrity, stdlib zip release bundle,
   advisory semantic claim-risk layer, expanded Korean coverage, internal
   release-readiness checklist (`haen readiness`).
+- Gate 6 (Items 1–8): implemented (`docs/reviews/REVIEW_GATE_6_SCOPE.md` +
+  execution addendum) — semantic-risk surfacing in dossier/readiness, canonical
+  reproducibility mode, `haen release-candidate` (one-command internal package +
+  archive + sidecar hash), zip-aware `haen validate`, end-to-end acceptance test,
+  docs-only safe-section mechanism + Korean governance doc
+  (`docs/claim_governance_ko.md`).
 
 ## Validation
 

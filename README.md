@@ -56,7 +56,10 @@ haen screen                    # braking + load-transfer dynamics screening
 haen rfi --branch GT-1H        # generate an RFI from open gaps (incl. partners)
 haen dossier --branch GT-1 --out out/dossier.md
 haen export --branch GT-1 --out out/pkg   # internal review package (dossier+images+manifest)
-haen validate --dir out/pkg               # validate an exported internal package
+haen release-candidate --out out/rc --generated-at 2026-01-01T00:00:00+00:00
+                                          # full internal release candidate (reproducible)
+haen validate out/rc                      # validate a package directory
+haen validate out/rc.zip                  # validate the archive (+ .sha256 sidecar)
 haen readiness                            # internal release-readiness checklist
 haen check path/to/text.md     # forbidden-claim check
 

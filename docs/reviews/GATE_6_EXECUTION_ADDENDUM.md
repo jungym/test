@@ -222,3 +222,19 @@ Do not amend or force-push.
 
 Do not make external-release, certification, production, supplier-confirmation,
 road-legality, design-completion, or real-world validation claims.
+
+## Amendment A — clarification patch (applied at execution start)
+
+The user-supplied clarification patch confirmed this addendum and added:
+
+1. **Safe-section mechanism requirement:** if the repository lacks a
+   safe-section mechanism, implement one before expanding Korean governance
+   docs. → Implemented in Gate 6 Item 6 (`haen.governance`:
+   `claim-safe-section` markers, `check_doc_text`, marker-free enforcement on
+   generated artifacts).
+2. **Release-candidate target UX:**
+   `python -m haen.cli release-candidate --out dist/internal_review
+   --generated-at <ISO>` must reuse the same reproducibility code path as the
+   lower-level export functions. → Implemented in Gate 6 Items 3/4.
+3. Any package layout shown in the patch remains illustrative; the existing
+   repository export layout was preserved (§5 of this addendum still governs).
