@@ -154,6 +154,38 @@ def metadata_completeness(vehicle: VehicleDefinition) -> dict[str, int]:
     return {"total": len(items), "complete": complete, "incomplete": len(items) - complete}
 
 
+def compare_with_metadata(vehicles: list[VehicleDefinition]) -> pd.DataFrame:
+    """Long-form mass + energy line items across vehicles, with full provenance.
+
+    One row per line item with value, unit, label, source_type, confidence,
+    assumption_notes and metadata_complete. Deterministic ordering. The summary
+    ``compare()`` table is left unchanged; this is the metadata-rich companion.
+    """
+    rows = []
+    for v in vehicles:
+        items = [("mass", it) for it in v.mass_breakdown]
+        items += [("energy", it) for it in energy_line_items(v)]
+        for kind, it in items:
+            rows.append(
+                {
+                    "id": v.id,
+                    "branch": v.branch_id,
+                    "kind": kind,
+                    "name": it.name,
+                    "value": it.value,
+                    "unit": it.unit,
+                    "label": it.label.value,
+                    "source_type": it.source_type,
+                    "confidence": it.confidence.value,
+                    "assumption_notes": it.assumption_notes,
+                    "metadata_complete": it.metadata_complete(),
+                }
+            )
+    cols = ["id", "branch", "kind", "name", "value", "unit", "label",
+            "source_type", "confidence", "assumption_notes", "metadata_complete"]
+    return pd.DataFrame(rows, columns=cols)
+
+
 def energy_scenario_comparison(vehicles: list[VehicleDefinition]) -> pd.DataFrame:
     """Internal energy-scenario comparison across branches (comparison only).
 
