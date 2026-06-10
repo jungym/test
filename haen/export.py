@@ -259,6 +259,11 @@ def export_release_package(
         "external_release_allowed": False,
         "files": dict(sorted(files.items())),
     }
+    # Bundle integrity hash over the sorted (filename -> checksum) mapping. This
+    # detects tampering with the manifest's file list/checksums as a whole.
+    manifest["bundle_sha256"] = sha256_text(
+        json.dumps(manifest["files"], sort_keys=True)
+    )
     manifest_text = json.dumps(manifest, indent=2, sort_keys=True)
     manifest_path = out / "manifest.json"
     manifest_path.write_text(manifest_text, encoding="utf-8")
@@ -281,7 +286,8 @@ def validate_release(out_dir: str | Path) -> list[str]:
         return ["manifest.json missing"]
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
 
-    for name, expected in manifest.get("files", {}).items():
+    files_map = manifest.get("files", {})
+    for name, expected in files_map.items():
         fp = out / name
         if not fp.exists():
             problems.append(f"missing file: {name}")
@@ -289,6 +295,13 @@ def validate_release(out_dir: str | Path) -> list[str]:
         actual = sha256_text(fp.read_text(encoding="utf-8"))
         if actual != expected:
             problems.append(f"checksum mismatch: {name}")
+
+    # Bundle integrity: the recomputed hash of the file map must match the
+    # declared bundle hash (detects manifest-level tampering).
+    if "bundle_sha256" in manifest:
+        recomputed = sha256_text(json.dumps(files_map, sort_keys=True))
+        if recomputed != manifest["bundle_sha256"]:
+            problems.append("bundle hash mismatch")
 
     dossier = out / "dossier.md"
     if dossier.exists():
