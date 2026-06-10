@@ -199,6 +199,77 @@ def packaging_sideview(components: list[Component], vehicle=None):
     return _render_diagram(packaging_diagram(components, vehicle, view="side"))
 
 
+def _esc(text: str) -> str:
+    return (
+        text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+
+
+def diagram_to_svg(diagram: PackagingDiagram, *, px_per_mm: float = 0.15, padding: int = 20) -> str:
+    """Render a :class:`PackagingDiagram` to a dependency-free, deterministic SVG.
+
+    Pure string output — no plotting library required — so packaging images can be
+    exported reproducibly. Internal-only, low-fidelity concept visualization; not
+    CAD or geometric validation.
+    """
+    rects = list(diagram.rects)
+    caption = _esc(diagram.caption)
+    if not rects:
+        return (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="320" height="60">'
+            f'<text x="8" y="34" font-family="sans-serif" font-size="11">'
+            f"(empty {diagram.view} view) {caption}</text></svg>"
+        )
+
+    minx = min(r.x0 for r in rects)
+    maxx = max(r.x1 for r in rects)
+    miny = min(r.y0 for r in rects)
+    maxy = max(r.y1 for r in rects)
+    width = round((maxx - minx) * px_per_mm + 2 * padding, 1)
+    height = round((maxy - miny) * px_per_mm + 2 * padding + 24, 1)
+
+    def sx(x: float) -> float:
+        return round((x - minx) * px_per_mm + padding, 1)
+
+    def sy(y: float) -> float:  # flip so +y/up is up
+        return round((maxy - y) * px_per_mm + padding, 1)
+
+    parts = [
+        f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" '
+        f'viewBox="0 0 {width} {height}">',
+        f'<text x="6" y="14" font-family="sans-serif" font-size="11">'
+        f"Packaging {diagram.view} view (INTERNAL, low-fidelity AABB)</text>",
+    ]
+    for r in rects:
+        stroke = "#444"
+        dash = ' stroke-dasharray="4 3"' if r.kind == "envelope" else ""
+        x0, y_top = sx(r.x0), sy(r.y1)
+        w = round(sx(r.x1) - sx(r.x0), 1)
+        h = round(sy(r.y0) - sy(r.y1), 1)
+        parts.append(
+            f'<rect x="{x0}" y="{y_top}" width="{w}" height="{h}" '
+            f'fill="none" stroke="{stroke}"{dash}/>'
+        )
+        parts.append(
+            f'<text x="{round(x0 + 2, 1)}" y="{round(y_top + 12, 1)}" '
+            f'font-family="sans-serif" font-size="10">{_esc(r.name)}</text>'
+        )
+    for c in diagram.conflicts:
+        x0, y_top = sx(c.x0), sy(c.y1)
+        w = round(sx(c.x1) - sx(c.x0), 1)
+        h = round(sy(c.y0) - sy(c.y1), 1)
+        parts.append(
+            f'<rect x="{x0}" y="{y_top}" width="{w}" height="{h}" '
+            f'fill="red" fill-opacity="0.3" stroke="red"/>'
+        )
+    parts.append(
+        f'<text x="6" y="{round(height - 6, 1)}" font-family="sans-serif" '
+        f'font-size="9">{caption}</text>'
+    )
+    parts.append("</svg>")
+    return "\n".join(parts)
+
+
 def mass_breakdown_pie_mpl(breakdown: pd.DataFrame):
     """Matplotlib pie of mass groups for static report embedding.
 
