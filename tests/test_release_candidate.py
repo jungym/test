@@ -1,5 +1,6 @@
 """Tests for Gate 6 Item 4 — release-candidate command (shared reproducibility path)."""
 
+import argparse
 import json
 
 from haen.cli import main
@@ -31,19 +32,25 @@ def test_release_candidate_builds_full_package(tmp_path, capsys):
 
 def test_release_candidate_uses_shared_repro_mechanism(tmp_path):
     """Direct export mode and release-candidate mode share generated_at + ordering."""
+    from haen.cli import _project, _rfi_for
+
     _run_rc(tmp_path / "rc")
     rc_manifest = json.loads((tmp_path / "rc" / "manifest.json").read_text())
     assert rc_manifest["reproducible"] is True
     assert rc_manifest["generated_at"] == FIXED_TS
 
-    # Direct export with identical inputs through the same export function.
-    fleet = build_sample_fleet()
-    text = build_dossier(programme="HAEN GT-1", branch="GT-1", vehicles=fleet,
-                         components=build_sample_components(), generated_at=FIXED_TS)
+    # Direct export mirroring the CLI's inputs through the same export function.
+    proj = _project(argparse.Namespace(project=None))
+    rfi = _rfi_for(proj, "GT-1")
+    text = build_dossier(
+        programme=proj.programme, branch="GT-1", vehicles=proj.vehicles,
+        components=proj.components, evidence=proj.evidence, ledger=proj.ledger,
+        rfi=rfi, generated_at=FIXED_TS,
+    )
     direct = export_release_package(
-        text, tmp_path / "direct", programme="HAEN GT-1", branch="GT-1",
-        generated_at=FIXED_TS, components=build_sample_components(),
-        vehicle=fleet[0], reproducible=True,
+        text, tmp_path / "direct", programme=proj.programme, branch="GT-1",
+        generated_at=FIXED_TS, components=proj.components, vehicle=proj.vehicles[0],
+        rfi_markdown=rfi.to_markdown(), reproducible=True,
     )
     # Same generated_at propagation and the same stable file ordering behaviour.
     assert direct.manifest["generated_at"] == rc_manifest["generated_at"]

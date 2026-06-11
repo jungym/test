@@ -246,6 +246,10 @@ def build_dossier(
     )
     if ledger is not None:
         led_df = pd.DataFrame(ledger.to_records())
+        # Drop the per-entry created_at timestamp: it is non-deterministic and
+        # noise for the dossier, so removing it keeps reproducible exports stable.
+        if not led_df.empty:
+            led_df = led_df.drop(columns=["created_at"], errors="ignore")
         assumptions_md = _df_to_md(led_df, index=False) if not led_df.empty else "_No assumptions recorded._"
     else:
         assumptions_md = "_No assumptions recorded._"

@@ -1,11 +1,21 @@
 """Command-line entry point for common HAEN design-support tasks.
 
+All data-consuming commands accept ``--project <haen-project.yaml>`` to run on
+real, human-authored data; without it they fall back to the bundled sample so the
+commands work out of the box. Nothing here performs any external action and every
+generated artifact is internal-only and human-review-required.
+
 Usage:
-    haen compare                 # print branch comparison table
-    haen simulate                # print low-fidelity simulation results
-    haen check <file>            # run forbidden-claim check on a text file
-    haen rfi [--branch ID]       # generate an RFI from sample gaps
-    haen dossier [--out PATH]    # build the entry validation dossier
+    haen compare [--project P]      # branch comparison table
+    haen simulate [--project P]     # low-fidelity simulation results
+    haen screen [--project P]       # braking + load-transfer dynamics screening
+    haen check <file>               # run forbidden-claim check on a text file
+    haen rfi [--project P]          # generate an RFI (incl. completeness prompts)
+    haen dossier [--project P]      # build the entry validation dossier
+    haen export --out DIR           # internal review package
+    haen validate <dir|zip>         # validate an internal package
+    haen readiness [--project P]    # internal release-readiness checklist
+    haen release-candidate --out D  # full internal release candidate package
 """
 
 from __future__ import annotations
@@ -16,12 +26,43 @@ import sys
 from . import DISCLAIMER, __version__
 
 
+# --------------------------------------------------------------------------- #
+# Project loading (sample fallback) + shared helpers
+# --------------------------------------------------------------------------- #
+def _project(args):
+    """Load the project from ``--project`` or fall back to the bundled sample."""
+    path = getattr(args, "project", None)
+    if path:
+        from . import io
+
+        return io.load_project(path)
+    from .sample_data import build_sample_project
+
+    return build_sample_project()
+
+
+def _rfi_for(proj, branch: str):
+    from .rfi_builder import build_rfi
+
+    expected = [c.name for c in proj.components] or None
+    return build_rfi(
+        title=f"{proj.programme} RFI",
+        branch=branch,
+        ledger=proj.ledger,
+        evidence=proj.evidence,
+        expected_components=expected,
+        partners=proj.partners,
+        vehicles=proj.vehicles,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Commands
+# --------------------------------------------------------------------------- #
 def _cmd_compare(args) -> int:
     from . import design_space_explorer as dse
-    from .sample_data import build_sample_fleet
 
-    fleet = build_sample_fleet()
-    result = dse.score_branches(fleet)
+    result = dse.score_branches(_project(args).vehicles)
     print(result.table.to_string())
     print("\nTrade-off ranking (advisory):")
     print(result.ranking.to_string())
@@ -30,9 +71,8 @@ def _cmd_compare(args) -> int:
 
 def _cmd_simulate(args) -> int:
     from . import low_fidelity_simulation as sim
-    from .sample_data import build_sample_fleet
 
-    results = sim.simulate_all(build_sample_fleet())
+    results = sim.simulate_all(_project(args).vehicles)
     for r in results:
         flag = "  [!] top-speed = MODEL ARTIFACT" if r.top_speed_is_artifact else ""
         print(
@@ -49,10 +89,9 @@ def _cmd_simulate(args) -> int:
 
 def _cmd_screen(args) -> int:
     from . import low_fidelity_simulation as sim
-    from .sample_data import build_sample_fleet
 
     print("Dynamics screening (low_fidelity_screening — not vehicle-dynamics validation):")
-    for v in build_sample_fleet():
+    for v in _project(args).vehicles:
         b = sim.screen_braking(vehicle_id=v.id)
         lt = sim.screen_load_transfer_for(v)
         print(
@@ -80,49 +119,23 @@ def _cmd_check(args) -> int:
 
 
 def _cmd_rfi(args) -> int:
-    from .rfi_builder import build_rfi
-    from .sample_data import (
-        build_sample_evidence,
-        build_sample_fleet,
-        build_sample_ledger,
-        build_sample_partners,
-    )
-
-    rfi = build_rfi(
-        title="GT-1 programme — sample RFI",
-        branch=args.branch,
-        ledger=build_sample_ledger(),
-        evidence=build_sample_evidence(),
-        expected_components=["Battery pack", "700 bar H2 tanks", "Fuel-cell stack", "Brakes"],
-        partners=build_sample_partners(),
-        vehicles=build_sample_fleet(),  # includes metadata-completeness prompts
-    )
-    print(rfi.to_markdown())
+    print(_rfi_for(_project(args), args.branch).to_markdown())
     return 0
 
 
 def _cmd_dossier(args) -> int:
     from .report_builder import build_dossier, save_dossier
-    from .rfi_builder import build_rfi
-    from .sample_data import (
-        build_sample_components,
-        build_sample_evidence,
-        build_sample_fleet,
-        build_sample_ledger,
-    )
 
-    fleet = build_sample_fleet()
-    ledger = build_sample_ledger()
-    evidence = build_sample_evidence()
-    rfi = build_rfi(title="GT-1 RFI", branch=args.branch, ledger=ledger, evidence=evidence)
+    proj = _project(args)
+    rfi = _rfi_for(proj, args.branch)
     text = build_dossier(
-        programme="HAEN GT-1",
+        programme=proj.programme,
         branch=args.branch,
-        vehicles=fleet,
-        evidence=evidence,
-        ledger=ledger,
+        vehicles=proj.vehicles,
+        evidence=proj.evidence,
+        ledger=proj.ledger,
         rfi=rfi,
-        components=build_sample_components(),
+        components=proj.components,
     )
     if args.out:
         path = save_dossier(text, args.out)
@@ -135,41 +148,31 @@ def _cmd_dossier(args) -> int:
 def _cmd_export(args) -> int:
     from .export import export_release_package, validate_release
     from .report_builder import build_dossier
-    from .rfi_builder import build_rfi
-    from .sample_data import (
-        build_sample_components,
-        build_sample_evidence,
-        build_sample_fleet,
-        build_sample_ledger,
-    )
 
-    fleet = build_sample_fleet()
-    components = build_sample_components()
-    rfi = build_rfi(
-        title="GT-1 RFI", branch=args.branch,
-        ledger=build_sample_ledger(), evidence=build_sample_evidence(),
-        partners=None, vehicles=fleet,
-    )
+    proj = _project(args)
+    rfi = _rfi_for(proj, args.branch)
     text = build_dossier(
-        programme="HAEN GT-1", branch=args.branch, vehicles=fleet, components=components,
+        programme=proj.programme, branch=args.branch, vehicles=proj.vehicles,
+        components=proj.components, evidence=proj.evidence, ledger=proj.ledger, rfi=rfi,
     )
     pkg = export_release_package(
-        text, args.out, programme="HAEN GT-1", branch=args.branch,
-        components=components, vehicle=fleet[0], rfi_markdown=rfi.to_markdown(),
+        text, args.out, programme=proj.programme, branch=args.branch,
+        components=proj.components, vehicle=proj.vehicles[0], rfi_markdown=rfi.to_markdown(),
     )
     print(f"Internal release package written to {pkg.out_dir}")
     for name in sorted(pkg.files):
         print(f"  {name}  {pkg.files[name][:12]}…")
     problems = validate_release(pkg.out_dir)
     print("Validation:", "OK" if not problems else f"{len(problems)} problem(s): {problems}")
+    print("  [INTERNAL ONLY — human review required; external release not allowed]")
     return 0 if not problems else 1
 
 
 def _cmd_readiness(args) -> int:
     from .report_builder import build_dossier, build_release_readiness, release_readiness_md
-    from .sample_data import build_sample_fleet
 
-    text = build_dossier(programme="HAEN GT-1", branch=args.branch, vehicles=build_sample_fleet())
+    proj = _project(args)
+    text = build_dossier(programme=proj.programme, branch=args.branch, vehicles=proj.vehicles)
     checklist = build_release_readiness(dossier_text=text)
     print(release_readiness_md(checklist))
     return 0
@@ -183,43 +186,23 @@ def _cmd_release_candidate(args) -> int:
     byte-stable package + archive). No external action of any kind.
     """
     from . import mass_energy
-    from .export import (
-        archive_release,
-        export_release_package,
-        validate_release,
-    )
+    from .export import archive_release, export_release_package, validate_release
     from .governance import semantic_risk_scan
-    from .report_builder import (
-        build_dossier,
-        build_release_readiness,
-        release_readiness_md,
-    )
-    from .rfi_builder import build_rfi
-    from .sample_data import (
-        build_sample_components,
-        build_sample_evidence,
-        build_sample_fleet,
-        build_sample_ledger,
-        build_sample_partners,
-    )
+    from .report_builder import build_dossier, build_release_readiness, release_readiness_md
 
+    proj = _project(args)
     generated = args.generated_at
     reproducible = generated is not None
 
-    fleet = build_sample_fleet()
-    components = build_sample_components()
-    rfi = build_rfi(
-        title="GT-1 programme RFI", branch=args.branch,
-        ledger=build_sample_ledger(), evidence=build_sample_evidence(),
-        partners=build_sample_partners(), vehicles=fleet,
-    )
+    rfi = _rfi_for(proj, args.branch)
     text = build_dossier(
-        programme="HAEN GT-1", branch=args.branch, vehicles=fleet,
-        components=components, generated_at=generated,
+        programme=proj.programme, branch=args.branch, vehicles=proj.vehicles,
+        components=proj.components, evidence=proj.evidence, ledger=proj.ledger,
+        rfi=rfi, generated_at=generated,
     )
     pkg = export_release_package(
-        text, args.out, programme="HAEN GT-1", branch=args.branch,
-        generated_at=generated, components=components, vehicle=fleet[0],
+        text, args.out, programme=proj.programme, branch=args.branch,
+        generated_at=generated, components=proj.components, vehicle=proj.vehicles[0],
         rfi_markdown=rfi.to_markdown(), reproducible=reproducible,
     )
 
@@ -229,7 +212,7 @@ def _cmd_release_candidate(args) -> int:
         dossier_text=dossier_text,
         validation_problems=problems,
         semantic_findings=len(semantic_risk_scan(dossier_text)),
-        completeness=mass_energy.metadata_completeness(fleet[0]),
+        completeness=mass_energy.metadata_completeness(proj.vehicles[0]),
     )
     (pkg.out_dir / "readiness.md").write_text(
         release_readiness_md(checklist), encoding="utf-8"
@@ -264,33 +247,46 @@ def _cmd_validate(args) -> int:
     return 1
 
 
+def _add_project(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--project", default=None,
+        help="path to a haen-project.yaml manifest (default: bundled sample data)",
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="haen", description=DISCLAIMER)
     p.add_argument("--version", action="version", version=f"haen {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
-    sub.add_parser("compare", help="branch comparison table").set_defaults(func=_cmd_compare)
-    sub.add_parser("simulate", help="low-fidelity simulation").set_defaults(func=_cmd_simulate)
-    sub.add_parser("screen", help="braking + load-transfer dynamics screening").set_defaults(
-        func=_cmd_screen
-    )
+    pcmp = sub.add_parser("compare", help="branch comparison table")
+    pcmp.set_defaults(func=_cmd_compare)
+    psim = sub.add_parser("simulate", help="low-fidelity simulation")
+    psim.set_defaults(func=_cmd_simulate)
+    psc = sub.add_parser("screen", help="braking + load-transfer dynamics screening")
+    psc.set_defaults(func=_cmd_screen)
+    for sp in (pcmp, psim, psc):
+        _add_project(sp)
 
     pc = sub.add_parser("check", help="forbidden-claim check on a file")
     pc.add_argument("file")
     pc.set_defaults(func=_cmd_check)
 
-    pr = sub.add_parser("rfi", help="generate a sample RFI")
+    pr = sub.add_parser("rfi", help="generate an RFI (incl. completeness prompts)")
     pr.add_argument("--branch", default="all")
+    _add_project(pr)
     pr.set_defaults(func=_cmd_rfi)
 
     pd = sub.add_parser("dossier", help="build entry validation dossier")
     pd.add_argument("--branch", default="GT-1")
     pd.add_argument("--out", default=None)
+    _add_project(pd)
     pd.set_defaults(func=_cmd_dossier)
 
     pe = sub.add_parser("export", help="export an internal review package (dossier + images + manifest)")
     pe.add_argument("--branch", default="GT-1")
     pe.add_argument("--out", required=True, help="output directory for the internal package")
+    _add_project(pe)
     pe.set_defaults(func=_cmd_export)
 
     pv = sub.add_parser(
@@ -303,6 +299,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     prr = sub.add_parser("readiness", help="print the internal release-readiness checklist")
     prr.add_argument("--branch", default="GT-1")
+    _add_project(prr)
     prr.set_defaults(func=_cmd_readiness)
 
     prc = sub.add_parser(
@@ -315,6 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--generated-at", default=None,
         help="fixed ISO timestamp; enables reproducible mode (shared export mechanism)",
     )
+    _add_project(prc)
     prc.set_defaults(func=_cmd_release_candidate)
     return p
 
