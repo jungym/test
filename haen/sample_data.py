@@ -293,3 +293,22 @@ def build_sample_partners() -> list[Partner]:
             notes="Technology observation — tracked for awareness only.",
         ),
     ]
+
+
+def build_sample_project():
+    """Bundle the seeded sample data into a :class:`haen.io.Project`.
+
+    Provides the default, no-input fallback so sample and user-supplied data flow
+    through the same code path.
+    """
+    from .io import Project
+
+    return Project(
+        programme="HAEN GT-1",
+        branch="GT-1",
+        vehicles=build_sample_fleet(),
+        components=build_sample_components(),
+        evidence=build_sample_evidence(),
+        partners=build_sample_partners(),
+        ledger=build_sample_ledger(),
+    )
