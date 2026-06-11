@@ -1,0 +1,31 @@
+partners:
+- name: Hylium
+  engagement_status: rfi_candidate
+  domain: LH2 cryogenic storage
+  rfi_level: 1
+  branch: GT-1H-LH2
+  notes: Level 1 RFI candidate; not a selected or confirmed supplier.
+- name: Cryos
+  engagement_status: watch_branch
+  domain: cryogenic systems
+  rfi_level: null
+  branch: GT-1H-LH2
+  notes: Watch branch — monitored only.
+- name: DALIM
+  engagement_status: watch_branch
+  domain: hydrogen systems
+  rfi_level: null
+  branch: GT-1H-LH2
+  notes: Watch branch — monitored only.
+- name: Parity
+  engagement_status: watch_branch
+  domain: energy systems
+  rfi_level: null
+  branch: GT-1H-LH2
+  notes: Watch branch — monitored only.
+- name: KIMM
+  engagement_status: technology_observation
+  domain: research institute
+  rfi_level: null
+  branch: all
+  notes: Technology observation — tracked for awareness only.

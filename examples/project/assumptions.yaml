@@ -1,0 +1,26 @@
+# Assumption ledger entries (planning assumptions; not verified figures).
+assumptions:
+  - key: bev.pack_density
+    statement: BEV pack-level gravimetric energy density
+    value: 180
+    unit: Wh/kg
+    source: internal estimate from 2025 cell roadmap
+    confidence: medium
+    status: open
+    branch: GT-1
+  - key: h2.tank_system_density
+    statement: 700 bar H2 storage system-level energy density
+    value: 95
+    unit: Wh/kg
+    source: engineering judgement
+    confidence: low
+    status: open
+    branch: GT-1H
+  - key: lh2.boiloff_rate
+    statement: LH2 daily boil-off losses are acceptable for use case
+    value: unknown
+    unit: "%/day"
+    source: none
+    confidence: low
+    status: open
+    branch: GT-1H-LH2

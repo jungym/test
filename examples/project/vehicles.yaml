@@ -1,0 +1,157 @@
+vehicles:
+- id: GT-1-c01
+  name: GT-1 BEV baseline concept
+  branch_id: GT-1
+  branch_status: baseline
+  powertrain: bev
+  occupants: 2
+  dimensions:
+    length_mm: 4650.0
+    width_mm: 2000.0
+    height_mm: 1180.0
+    wheelbase_mm: 2750.0
+    front_overhang_mm: 950.0
+    rear_overhang_mm: 950.0
+    ground_clearance_mm: 95.0
+  energy_storage:
+    storage_type: li-ion battery pack
+    usable_energy_kwh: 95.0
+    gravimetric_density_wh_per_kg: 180.0
+    refill_time_min: 25.0
+  powerplant:
+    peak_power_kw: 850.0
+    drivetrain: awd dual-motor
+    buffer_battery_kwh: 0.0
+  performance_targets:
+    top_speed_kph: 340.0
+    zero_to_100_s_target: 2.6
+    target_range_km: 450.0
+  aero_cd: 0.32
+  frontal_area_m2: 1.92
+  rolling_resistance_coeff: 0.011
+  chassis:
+    cg_height_mm: 400.0
+    track_width_mm: 1700.0
+    cg_longitudinal_bias: 0.47
+  mass_breakdown:
+  - unit: kg
+    label: assumption
+    source_type: engineering_assumption
+    confidence: low
+    assumption_notes: Class-typical CFRP tub mass (assumption).
+    name: Carbon monocoque
+    mass_kg: 180.0
+    group: structure
+  - unit: kg
+    label: assumption
+    source_type: engineering_assumption
+    confidence: low
+    assumption_notes: Composite body set (assumption).
+    name: Body panels & closures
+    mass_kg: 120.0
+    group: body
+  - unit: kg
+    label: calculated
+    source_type: calculated
+    confidence: medium
+    assumption_notes: Derived from usable energy / pack gravimetric density.
+    name: Battery pack
+    mass_kg: 527.7777777777778
+    group: energy
+  - unit: kg
+    label: assumption
+    source_type: engineering_assumption
+    confidence: low
+    assumption_notes: Dual-motor + inverter set (assumption).
+    name: E-motors & inverters
+    mass_kg: 190.0
+    group: powertrain
+  - unit: kg
+    label: assumption
+    source_type: engineering_assumption
+    confidence: low
+    assumption_notes: Corners, uprights, wheels/tyres (assumption).
+    name: Suspension & wheels
+    mass_kg: 240.0
+    group: chassis
+  - unit: kg
+    label: assumption
+    source_type: engineering_assumption
+    confidence: low
+    assumption_notes: Interior + 2 occupants allowance (assumption).
+    name: Interior & occupants allowance
+    mass_kg: 210.0
+    group: interior
+  glider_mass_kg: 900.0
+- id: GT-1H-c01
+  name: GT-1H 700bar H2 halo concept
+  branch_id: GT-1H
+  branch_status: halo
+  powertrain: h2_fuel_cell
+  occupants: 2
+  dimensions:
+    length_mm: 4650.0
+    width_mm: 2000.0
+    height_mm: 1180.0
+    wheelbase_mm: 2750.0
+    front_overhang_mm: 950.0
+    rear_overhang_mm: 950.0
+    ground_clearance_mm: 95.0
+  energy_storage:
+    storage_type: 700 bar compressed H2 (type IV tanks)
+    usable_energy_kwh: 165.0
+    gravimetric_density_wh_per_kg: 95.0
+    refill_time_min: 5.0
+  powerplant:
+    peak_power_kw: 600.0
+    drivetrain: awd dual-motor + fuel cell
+    buffer_battery_kwh: 12.0
+  performance_targets:
+    top_speed_kph: 340.0
+    zero_to_100_s_target: 2.9
+    target_range_km: 700.0
+  aero_cd: 0.33
+  frontal_area_m2: 1.95
+  rolling_resistance_coeff: 0.011
+  chassis:
+    cg_height_mm: 400.0
+    track_width_mm: 1700.0
+    cg_longitudinal_bias: 0.47
+  mass_breakdown: []
+  glider_mass_kg: 1050.0
+- id: GT-1H-LH2-c01
+  name: GT-1H LH2 watch concept
+  branch_id: GT-1H-LH2
+  branch_status: watch
+  powertrain: h2_fuel_cell
+  occupants: 2
+  dimensions:
+    length_mm: 4650.0
+    width_mm: 2000.0
+    height_mm: 1180.0
+    wheelbase_mm: 2750.0
+    front_overhang_mm: 950.0
+    rear_overhang_mm: 950.0
+    ground_clearance_mm: 95.0
+  energy_storage:
+    storage_type: cryogenic liquid H2 (-253 C)
+    usable_energy_kwh: 210.0
+    gravimetric_density_wh_per_kg: 140.0
+    refill_time_min: 8.0
+  powerplant:
+    peak_power_kw: 600.0
+    drivetrain: awd dual-motor + fuel cell
+    buffer_battery_kwh: 12.0
+  performance_targets:
+    top_speed_kph: 340.0
+    zero_to_100_s_target: 2.9
+    target_range_km: 850.0
+  aero_cd: 0.33
+  frontal_area_m2: 1.95
+  rolling_resistance_coeff: 0.011
+  chassis:
+    cg_height_mm: 400.0
+    track_width_mm: 1700.0
+    cg_longitudinal_bias: 0.47
+  mass_breakdown: []
+  glider_mass_kg: 1100.0

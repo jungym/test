@@ -1,0 +1,34 @@
+evidence:
+- id: EV-001
+  component: Battery pack
+  supplier: CellCo (placeholder)
+  claim: pack-level 180 Wh/kg
+  evidence_type: estimate
+  document_ref: internal-roadmap-2025
+  received_date: '2025-11-01'
+  verification: unverified
+  reviewer: ''
+  branch: GT-1
+  notes: ''
+- id: EV-002
+  component: 700 bar H2 tanks
+  supplier: TankCo (placeholder)
+  claim: type IV tank gravimetric efficiency 6.5 wt% H2
+  evidence_type: datasheet
+  document_ref: tankco-ds-rev-a
+  received_date: '2025-12-10'
+  verification: in_review
+  reviewer: ''
+  branch: GT-1H
+  notes: ''
+- id: EV-003
+  component: Fuel-cell stack
+  supplier: StackCo (placeholder)
+  claim: continuous 120 kW net output
+  evidence_type: quote
+  document_ref: stackco-q-0042
+  received_date: '2026-01-15'
+  verification: unverified
+  reviewer: ''
+  branch: GT-1H
+  notes: ''

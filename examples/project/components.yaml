@@ -1,0 +1,41 @@
+components:
+- name: Battery pack
+  group: energy
+  box:
+    cx: 0.0
+    cy: 0.0
+    cz: 150.0
+    size_x: 2400.0
+    size_y: 1400.0
+    size_z: 180.0
+  rigid: true
+- name: Front motor
+  group: powertrain
+  box:
+    cx: 1400.0
+    cy: 0.0
+    cz: 300.0
+    size_x: 300.0
+    size_y: 600.0
+    size_z: 400.0
+  rigid: true
+- name: Rear motor
+  group: powertrain
+  box:
+    cx: -1400.0
+    cy: 0.0
+    cz: 300.0
+    size_x: 300.0
+    size_y: 600.0
+    size_z: 400.0
+  rigid: true
+- name: Cockpit
+  group: interior
+  box:
+    cx: 0.0
+    cy: 0.0
+    cz: 720.0
+    size_x: 1500.0
+    size_y: 1400.0
+    size_z: 900.0
+  rigid: true

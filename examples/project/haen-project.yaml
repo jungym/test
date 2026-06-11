@@ -1,0 +1,13 @@
+# HAEN project manifest — points at the data files (paths relative to this file).
+# Edit these files (or point at your own) and run, e.g.:
+#   python -m haen.cli release-candidate --project examples/project/haen-project.yaml \
+#       --out dist/internal_review --generated-at 2026-01-01T00:00:00+00:00
+# All outputs are INTERNAL ONLY and require human review.
+programme: HAEN GT-1 (example project)
+branch: GT-1
+vehicles: vehicles.yaml
+components: components.yaml
+evidence: evidence.yaml
+partners: partners.yaml
+assumptions: assumptions.yaml
+# ledger_db: ledger.db   # optional: file-backed (persistent) assumption ledger
