@@ -59,7 +59,13 @@ Every screening output carries `source_type`, `confidence`, and a `DataLabel`
   reproducibility mode, `haen release-candidate` (one-command internal package +
   archive + sidecar hash), zip-aware `haen validate`, end-to-end acceptance test,
   docs-only safe-section mechanism + Korean governance doc
-  (`docs/claim_governance_ko.md`).
+  (`docs/claim_governance_ko.md`). Closed: `docs/reviews/GATE_6_CLOSURE.md`.
+- Gate 7 (workstreams A/B/C): implemented (`docs/reviews/REVIEW_GATE_7_SCOPE.md`)
+  — real project-data input/persistence (`haen/io.py`, `--project`, dashboard
+  loading, file-backed ledger; unused DuckDB dropped), quality/test/CI hardening
+  (webapp smoke, CLI e2e, more unit tests, ruff lint + coverage in CI), and
+  release finalization (`examples/project/`, `docs/operator_guide.md`,
+  `CHANGELOG.md`, `docs/release_procedure.md`).
 
 ## Validation
 

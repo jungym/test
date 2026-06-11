@@ -48,8 +48,12 @@ Requires Python 3.11+.
 
 ## Use
 
+All commands run on the bundled sample by default, or on your own data with
+`--project <haen-project.yaml>` (see `examples/project/` and the
+[operator guide](docs/operator_guide.md)).
+
 ```bash
-# CLI
+# CLI  (add --project examples/project/haen-project.yaml to run on real data)
 haen compare                   # branch comparison + trade-off ranking
 haen simulate                  # low-fidelity performance estimates
 haen screen                    # braking + load-transfer dynamics screening
