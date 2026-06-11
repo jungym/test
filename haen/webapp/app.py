@@ -27,19 +27,15 @@ from haen import mass_energy, visualization
 from haen.governance import check_text
 from haen.packaging import check_envelope, detect_overlaps
 from haen.rfi_builder import build_rfi
-from haen.sample_data import (
-    build_sample_components,
-    build_sample_evidence,
-    build_sample_fleet,
-    build_sample_ledger,
-    build_sample_partners,
-)
+from haen.sample_data import build_sample_components, build_sample_project
 
 
-@st.cache_data
-def _load():
-    fleet = build_sample_fleet()
-    return fleet
+def _load_project(project_path):
+    if project_path:
+        from haen import io
+
+        return io.load_project(project_path)
+    return build_sample_project()
 
 
 def main() -> None:
@@ -48,7 +44,17 @@ def main() -> None:
     st.caption(f"MVP v{__version__} — human-reviewed AI-assisted design support")
     st.warning(DISCLAIMER)
 
-    fleet = _load()
+    project_path = st.sidebar.text_input(
+        "Project manifest (haen-project.yaml) — blank uses bundled sample", value=""
+    ).strip()
+    try:
+        proj = _load_project(project_path or None)
+    except Exception as exc:  # pragma: no cover - UI error path
+        st.error(f"Failed to load project ({exc}); using bundled sample.")
+        proj = build_sample_project()
+    st.sidebar.caption(f"Programme: {proj.programme} · vehicles: {len(proj.vehicles)} (internal-only)")
+
+    fleet = proj.vehicles
     by_id = {v.id: v for v in fleet}
 
     page = st.sidebar.radio(
@@ -77,11 +83,11 @@ def main() -> None:
     elif page == "Branch trade-off":
         _page_tradeoff(fleet)
     elif page == "Packaging":
-        _page_packaging(by_id)
+        _page_packaging(by_id, proj)
     elif page == "Supplier evidence":
-        _page_evidence()
+        _page_evidence(proj)
     elif page == "RFI builder":
-        _page_rfi()
+        _page_rfi(proj)
     elif page == "Forbidden claim checker":
         _page_checker()
 
@@ -217,10 +223,10 @@ def _page_tradeoff(fleet) -> None:
     st.plotly_chart(visualization.tradeoff_radar(result.table, keys), use_container_width=True)
 
 
-def _page_packaging(by_id) -> None:
+def _page_packaging(by_id, proj) -> None:
     st.header("Packaging check")
     vid = st.selectbox("Vehicle (for envelope)", list(by_id))
-    components = build_sample_components()
+    components = proj.components or build_sample_components()
     st.caption(
         "Internal-only, low-fidelity packaging (AABB). Not CAD or geometric validation."
     )
@@ -260,10 +266,12 @@ def _page_packaging(by_id) -> None:
         st.success("All components fit within the external envelope (approximate).")
 
 
-def _page_evidence() -> None:
+def _page_evidence(proj) -> None:
+    from haen.supplier_evidence import SupplierEvidenceTable
+
     st.header("Supplier evidence register")
     st.info("No supplier figure is treated as confirmed. Verification is a human step.")
-    evidence = build_sample_evidence()
+    evidence = proj.evidence or SupplierEvidenceTable([])
     st.dataframe(evidence.to_dataframe(), use_container_width=True)
     st.write("Coverage by verification state:")
     st.json(evidence.coverage_summary())
@@ -283,22 +291,24 @@ def _page_evidence() -> None:
                     "rfi_level": p.rfi_level,
                     "branch": p.branch,
                 }
-                for p in build_sample_partners()
+                for p in proj.partners
             ]
         ).set_index("name"),
         use_container_width=True,
     )
 
 
-def _page_rfi() -> None:
+def _page_rfi(proj) -> None:
     st.header("RFI builder")
     branch = st.selectbox("Branch", ["all", "GT-1", "GT-1H", "GT-1H-LH2"])
     rfi = build_rfi(
-        title="GT-1 programme RFI",
+        title=f"{proj.programme} RFI",
         branch=branch,
-        ledger=build_sample_ledger(),
-        evidence=build_sample_evidence(),
-        expected_components=["Battery pack", "700 bar H2 tanks", "Fuel-cell stack", "Brakes"],
+        ledger=proj.ledger,
+        evidence=proj.evidence,
+        expected_components=[c.name for c in proj.components] or None,
+        partners=proj.partners,
+        vehicles=proj.vehicles,
     )
     st.markdown(rfi.to_markdown())
     st.download_button("Download RFI (Markdown)", rfi.to_markdown(),
