@@ -12,9 +12,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
+from typing import TYPE_CHECKING
 
 from .governance import AssumptionLedger, assert_clean
 from .supplier_evidence import EngagementStatus, Partner, SupplierEvidenceTable
+
+if TYPE_CHECKING:  # forward-ref only; avoids an unnecessary runtime import
+    from .vehicle_definition import VehicleDefinition
 
 
 @dataclass

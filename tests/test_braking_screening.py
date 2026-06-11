@@ -6,7 +6,6 @@ that no forbidden claims are introduced. They also confirm Item 1 (gate-status)
 remains intact.
 """
 
-import math
 
 import pytest
 

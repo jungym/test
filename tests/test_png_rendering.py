@@ -6,7 +6,6 @@ convenience artifact that degrades gracefully when matplotlib is absent.
 
 import json
 
-import pytest
 
 from haen import visualization as viz
 from haen.export import export_dossier, export_packaging_images

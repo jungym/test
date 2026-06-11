@@ -6,7 +6,6 @@ import json
 from haen.cli import main
 from haen.export import export_release_package
 from haen.report_builder import build_dossier
-from haen.sample_data import build_sample_components, build_sample_fleet
 
 FIXED_TS = "2026-01-01T00:00:00+00:00"
 
